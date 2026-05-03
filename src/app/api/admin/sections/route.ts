@@ -66,39 +66,38 @@ export async function PUT(request: Request) {
   try {
     const payload = payloadSchema.parse(await request.json());
 
-    await prisma.$transaction(async (tx) => {
-      for (const section of payload.sections) {
-        await tx.section.update({
-          where: { id: section.id },
-          data: {
-            name: section.name,
-            slug: section.slug,
-            enabled: section.enabled,
-            order: section.order,
-            title: section.title || null,
-            subtitle: section.subtitle || null,
-            description: section.description || null,
-          },
+    // Tanpa interactive $transaction — kompatibel dengan Supabase pooler (hindari P2028).
+    for (const section of payload.sections) {
+      await prisma.section.update({
+        where: { id: section.id },
+        data: {
+          name: section.name,
+          slug: section.slug,
+          enabled: section.enabled,
+          order: section.order,
+          title: section.title || null,
+          subtitle: section.subtitle || null,
+          description: section.description || null,
+        },
+      });
+
+      const contentsToSave = section.contents.filter(
+        (c) => c.key.trim().length > 0 && c.value.trim().length > 0,
+      );
+
+      await prisma.content.deleteMany({ where: { sectionId: section.id } });
+      if (contentsToSave.length) {
+        await prisma.content.createMany({
+          data: contentsToSave.map((content) => ({
+            sectionId: section.id,
+            key: content.key.trim(),
+            value: content.value.trim(),
+            valueType: content.valueType,
+            sortOrder: content.sortOrder,
+          })),
         });
-
-        const contentsToSave = section.contents.filter(
-          (c) => c.key.trim().length > 0 && c.value.trim().length > 0,
-        );
-
-        await tx.content.deleteMany({ where: { sectionId: section.id } });
-        if (contentsToSave.length) {
-          await tx.content.createMany({
-            data: contentsToSave.map((content) => ({
-              sectionId: section.id,
-              key: content.key.trim(),
-              value: content.value.trim(),
-              valueType: content.valueType,
-              sortOrder: content.sortOrder,
-            })),
-          });
-        }
       }
-    });
+    }
 
     return NextResponse.json({ ok: true });
   } catch {

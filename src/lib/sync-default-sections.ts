@@ -31,49 +31,49 @@ export async function syncDefaultSectionsFromDefaults(options?: {
     }
   }
 
-  await prisma.$transaction(async (tx) => {
-    await tx.section.deleteMany({
-      where: { slug: { in: [...OBSOLETE_SLUGS] } },
+  // Tanpa interactive $transaction: Supabase Transaction pooler (PgBouncer :6543)
+  // sering memutus transaksi interaktif (P2028). Operasi berurutan tetap idempoten.
+  await prisma.section.deleteMany({
+    where: { slug: { in: [...OBSOLETE_SLUGS] } },
+  });
+
+  for (const section of defaultSections) {
+    const row = await prisma.section.upsert({
+      where: { slug: section.slug },
+      create: {
+        slug: section.slug,
+        name: section.name,
+        type: section.type,
+        order: section.order,
+        enabled: section.enabled ?? true,
+        title: section.title,
+        subtitle: section.subtitle,
+        description: section.description,
+      },
+      update: {
+        name: section.name,
+        type: section.type,
+        order: section.order,
+        enabled: section.enabled ?? true,
+        title: section.title,
+        subtitle: section.subtitle,
+        description: section.description,
+      },
     });
 
-    for (const section of defaultSections) {
-      const row = await tx.section.upsert({
-        where: { slug: section.slug },
-        create: {
-          slug: section.slug,
-          name: section.name,
-          type: section.type,
-          order: section.order,
-          enabled: section.enabled ?? true,
-          title: section.title,
-          subtitle: section.subtitle,
-          description: section.description,
-        },
-        update: {
-          name: section.name,
-          type: section.type,
-          order: section.order,
-          enabled: section.enabled ?? true,
-          title: section.title,
-          subtitle: section.subtitle,
-          description: section.description,
-        },
+    await prisma.content.deleteMany({ where: { sectionId: row.id } });
+    if (section.contents.length > 0) {
+      await prisma.content.createMany({
+        data: section.contents.map((item) => ({
+          sectionId: row.id,
+          key: item.key,
+          value: item.value,
+          valueType: item.valueType ?? ContentValueType.TEXT,
+          sortOrder: item.sortOrder ?? 0,
+        })),
       });
-
-      await tx.content.deleteMany({ where: { sectionId: row.id } });
-      if (section.contents.length > 0) {
-        await tx.content.createMany({
-          data: section.contents.map((item) => ({
-            sectionId: row.id,
-            key: item.key,
-            value: item.value,
-            valueType: item.valueType ?? ContentValueType.TEXT,
-            sortOrder: item.sortOrder ?? 0,
-          })),
-        });
-      }
     }
-  });
+  }
 
   return true;
 }

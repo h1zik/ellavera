@@ -3,6 +3,9 @@ import { SectionType } from "@prisma/client";
 import { LandingSections } from "@/components/landing-sections";
 import { getLandingData } from "@/lib/data";
 
+/** CMS: selalu baca DB — jangan cache HTML/RSC dari build (hero & section bisa berubah tanpa redeploy). */
+export const dynamic = "force-dynamic";
+
 export default async function Home() {
   const { settings, sections } = await getLandingData();
   const heroSection = sections.find((s) => s.type === SectionType.HERO);

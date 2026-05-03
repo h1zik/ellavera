@@ -125,6 +125,12 @@ export function AdminDashboard({ initialSettings, initialSections, leads }: Prop
     });
 
     if (response.ok) {
+      try {
+        const next = (await response.json()) as SiteSettings;
+        setSettings(next);
+      } catch {
+        /* ignore parse */
+      }
       setMessage("Pengaturan disimpan.");
       router.refresh();
       return;

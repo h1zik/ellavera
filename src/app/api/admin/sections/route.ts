@@ -1,4 +1,5 @@
 import { SectionType } from "@prisma/client";
+import { revalidatePath } from "next/cache";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
@@ -99,6 +100,9 @@ export async function PUT(request: Request) {
         });
       }
     }
+
+    revalidatePath("/");
+    revalidatePath("/admin");
 
     return NextResponse.json({ ok: true });
   } catch {

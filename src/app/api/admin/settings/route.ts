@@ -1,3 +1,4 @@
+import { revalidatePath } from "next/cache";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { updateSiteSettings } from "@/lib/data";
@@ -90,6 +91,9 @@ export async function PUT(request: Request) {
       locationAddress: payload.locationAddress.trim() || null,
       mapsUrl: payload.mapsUrl.trim() || null,
     });
+
+    revalidatePath("/");
+    revalidatePath("/admin");
 
     return NextResponse.json(updated);
   } catch (e) {

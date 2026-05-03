@@ -2,6 +2,8 @@ import { AdminDashboard } from "@/components/admin-dashboard";
 import { ensureSeedData, getAllSectionsForAdmin } from "@/lib/data";
 import { prisma } from "@/lib/prisma";
 
+export const dynamic = "force-dynamic";
+
 export default async function AdminPage() {
   await ensureSeedData();
 

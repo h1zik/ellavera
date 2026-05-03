@@ -89,6 +89,8 @@ model SiteSettings {
   adminLogoUrl       String?
   /** Favicon situs (URL .ico / .png). */
   faviconUrl         String?
+  /** Logo di header halaman utama (menggantikan teks nama situs jika diisi). */
+  siteLogoUrl        String?
   /** JSON array: [{ "imageUrl": "https://...", "name": "...", "role": "..." }] */
   talentGalleryJson  String?  @db.Text
   updatedAt        DateTime @updatedAt

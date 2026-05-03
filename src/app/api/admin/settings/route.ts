@@ -65,6 +65,9 @@ const settingsSchema = z.object({
   faviconUrl: str.refine(isValidHeroOrAssetUrl, {
     message: "faviconUrl: kosong, URL https://…, atau path /uploads/…",
   }),
+  siteLogoUrl: str.refine(isValidHeroOrAssetUrl, {
+    message: "siteLogoUrl: kosong, URL https://…, atau path /uploads/…",
+  }),
   talentGalleryJson: str,
   locationAddress: str,
   mapsUrl: str
@@ -108,6 +111,7 @@ export async function PUT(request: Request) {
       heroImageUrl: payload.heroImageUrl.trim() || null,
       adminLogoUrl: payload.adminLogoUrl.trim() || null,
       faviconUrl: payload.faviconUrl.trim() || null,
+      siteLogoUrl: payload.siteLogoUrl.trim() || null,
       talentGalleryJson: payload.talentGalleryJson.trim() || null,
       locationAddress: payload.locationAddress.trim() || null,
       mapsUrl: payload.mapsUrl.trim() || null,

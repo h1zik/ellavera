@@ -152,6 +152,7 @@ export function AdminDashboard({ initialSettings, initialSections, leads }: Prop
       heroImageUrl: settings.heroImageUrl ?? "",
       adminLogoUrl: settings.adminLogoUrl ?? "",
       faviconUrl: settings.faviconUrl ?? "",
+      siteLogoUrl: settings.siteLogoUrl ?? "",
       talentGalleryJson: settings.talentGalleryJson ?? "",
       locationAddress: settings.locationAddress ?? "",
       mapsUrl: normalizeHttpsUrl(settings.mapsUrl ?? ""),
@@ -598,6 +599,28 @@ export function AdminDashboard({ initialSettings, initialSections, leads }: Prop
             onChange={(e) => setSettings((prev) => ({ ...prev, siteName: e.target.value }))}
             placeholder="Nama situs"
           />
+          <div className="md:col-span-2 space-y-2 rounded-xl border-2 border-black/10 bg-white/60 p-4">
+            <p className="text-sm font-bold">Logo header beranda</p>
+            <p className="text-xs font-semibold text-black/55">
+              Jika diisi, teks nama situs di atas halaman diganti logo ini (teks nama tetap dipakai
+              untuk alt & SEO).
+            </p>
+            <input
+              className="retro-input"
+              value={settings.siteLogoUrl ?? ""}
+              onChange={(e) =>
+                setSettings((prev) => ({ ...prev, siteLogoUrl: e.target.value }))
+              }
+              placeholder="URL logo (atau upload)"
+            />
+            <ImageUploadField
+              label="Upload logo beranda"
+              currentUrl={settings.siteLogoUrl ?? ""}
+              onUrlChange={(url) =>
+                setSettings((prev) => ({ ...prev, siteLogoUrl: url }))
+              }
+            />
+          </div>
           <input
             className="retro-input"
             value={settings.tagline}

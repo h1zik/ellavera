@@ -34,9 +34,20 @@ export default async function Home() {
               <p className="text-[10px] font-black uppercase tracking-[0.35em] text-black/50">
                 Maklon · Gen-Z · Unisex
               </p>
-              <p className="text-2xl font-black leading-none tracking-tight text-[var(--retro-black)] md:text-3xl">
-                {settings.siteName}
-              </p>
+              {settings.siteLogoUrl?.trim() ? (
+                // eslint-disable-next-line @next/next/no-img-element -- URL dari CMS (Supabase/dll.)
+                <img
+                  src={settings.siteLogoUrl.trim()}
+                  alt={settings.siteName}
+                  className="h-10 w-auto max-w-[min(100%,220px)] object-contain object-left md:h-12 md:max-w-[260px]"
+                  width={260}
+                  height={48}
+                />
+              ) : (
+                <p className="text-2xl font-black leading-none tracking-tight text-[var(--retro-black)] md:text-3xl">
+                  {settings.siteName}
+                </p>
+              )}
               <p className="text-sm font-semibold leading-snug text-black/75 md:text-base">
                 {settings.tagline}
               </p>

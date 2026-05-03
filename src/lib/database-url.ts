@@ -4,11 +4,20 @@
  *
  * Important: `https://<ref>.supabase.co` (API / project URL) is NOT a Postgres URI.
  * Use Supabase Dashboard → Project Settings → Database → Connection string → URI.
+ *
+ * Supabase **Transaction** pooler (`*.pooler.supabase.com:6543`) often blocks or hangs on
+ * `prisma db push` (DDL). Set DIRECT_URL to **Direct** or **Session** Postgres URI (port 5432).
  */
 export function isPostgresConnectionString(raw: string | undefined): boolean {
   const u = raw?.trim();
   if (!u) return false;
   return u.startsWith("postgresql://") || u.startsWith("postgres://");
+}
+
+/** Transaction pooler — avoid DDL through this URL. */
+export function isLikelySupabaseTransactionPooler(raw: string | undefined): boolean {
+  const u = raw?.toLowerCase() ?? "";
+  return u.includes("pooler.supabase.com") && u.includes(":6543");
 }
 
 /** First candidate that looks like a Postgres URI. */
@@ -34,7 +43,6 @@ function firstHttpLikeEnv(): string | undefined {
 
 /**
  * Ensures process.env.DATABASE_URL is a valid Postgres URI when any known env has one.
- * Call before creating PrismaClient.
  */
 export function normalizeDatabaseUrlEnv(): void {
   if (isPostgresConnectionString(process.env.DATABASE_URL)) return;
@@ -52,13 +60,21 @@ export function normalizeDatabaseUrlEnv(): void {
 }
 
 /**
- * Returns a Postgres URI for Prisma, or throws with Netlify/Supabase-specific guidance.
+ * Sets DIRECT_URL when safe: copy DATABASE_URL if not on Transaction pooler.
+ * Otherwise leaves DIRECT_URL unchanged (must be set explicitly in Netlify).
  */
-export function assertDatabaseUrlConfigured(): string {
-  normalizeDatabaseUrlEnv();
-  const url = process.env.DATABASE_URL?.trim();
-  if (isPostgresConnectionString(url)) return url!;
+export function normalizeDirectUrlEnv(): void {
+  if (isPostgresConnectionString(process.env.DIRECT_URL)) return;
 
+  const dbUrl = process.env.DATABASE_URL?.trim();
+  if (!isPostgresConnectionString(dbUrl)) return;
+
+  if (isLikelySupabaseTransactionPooler(dbUrl)) return;
+
+  process.env.DIRECT_URL = dbUrl;
+}
+
+function throwMissingDatabaseUrl(): never {
   const httpLike = firstHttpLikeEnv();
   const lines = [
     "Prisma butuh DATABASE_URL berupa URI Postgres (awalan postgresql:// atau postgres://).",
@@ -75,4 +91,46 @@ export function assertDatabaseUrlConfigured(): string {
   }
 
   throw new Error(lines.join("\n"));
+}
+
+function throwMissingDirectUrl(): never {
+  throw new Error(
+    [
+      "DATABASE_URL memakai Supabase Transaction pooler (…pooler.supabase.com:6543).",
+      "Prisma `db push` / migrasi membutuhkan koneksi yang mendukung DDL.",
+      "",
+      "Tambahkan env DIRECT_URL berupa connection string Direct atau Session dari Supabase:",
+      "Project Settings → Database → Connection string → Direct connection (host db.<ref>.supabase.co:5432)",
+      "atau Session pooler (bukan Transaction :6543).",
+      "",
+      "Di .env lokal, DIRECT_URL boleh sama dengan DATABASE_URL jika koneksinya bukan pooler :6543.",
+    ].join("\n"),
+  );
+}
+
+/**
+ * Normalizes DATABASE_URL + DIRECT_URL and validates both for Prisma (generate, db push, client).
+ */
+export function ensurePrismaDatabaseEnv(): string {
+  normalizeDatabaseUrlEnv();
+  const url = process.env.DATABASE_URL?.trim();
+  if (!isPostgresConnectionString(url)) {
+    throwMissingDatabaseUrl();
+  }
+
+  normalizeDirectUrlEnv();
+
+  if (!isPostgresConnectionString(process.env.DIRECT_URL)) {
+    if (isLikelySupabaseTransactionPooler(url)) {
+      throwMissingDirectUrl();
+    }
+    process.env.DIRECT_URL = url;
+  }
+
+  return url!;
+}
+
+/** @deprecated use ensurePrismaDatabaseEnv */
+export function assertDatabaseUrlConfigured(): string {
+  return ensurePrismaDatabaseEnv();
 }

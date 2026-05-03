@@ -8,8 +8,10 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  // DDL (db push / migrate) uses this — Supabase Transaction pooler :6543 hangs; use Direct or Session URI.
+  directUrl = env("DIRECT_URL")
 }
 
 enum SectionType {

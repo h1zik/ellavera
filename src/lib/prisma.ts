@@ -1,7 +1,7 @@
 import { PrismaClient } from "@prisma/client";
-import { assertDatabaseUrlConfigured } from "@/lib/database-url";
+import { ensurePrismaDatabaseEnv } from "@/lib/database-url";
 
-const databaseUrl = assertDatabaseUrlConfigured();
+const databaseUrl = ensurePrismaDatabaseEnv();
 
 const globalForPrisma = globalThis as unknown as { prisma?: PrismaClient };
 

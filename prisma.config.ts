@@ -3,6 +3,7 @@
 import "dotenv/config";
 import { defineConfig } from "prisma/config";
 import {
+  isLikelySupabaseTransactionPooler,
   isPostgresConnectionString,
   pickFirstPostgresUrl,
 } from "./src/lib/database-url";
@@ -21,6 +22,18 @@ function prismaConfigDatasourceUrl(): string {
   );
 }
 
+function prismaConfigDirectUrl(): string {
+  const direct = process.env["DIRECT_URL"]?.trim();
+  if (isPostgresConnectionString(direct)) return direct!;
+
+  const main = prismaConfigDatasourceUrl();
+  if (isPostgresConnectionString(main) && !isLikelySupabaseTransactionPooler(main)) {
+    return main;
+  }
+
+  return direct ?? "";
+}
+
 export default defineConfig({
   schema: "prisma/schema.prisma",
   migrations: {
@@ -28,5 +41,6 @@ export default defineConfig({
   },
   datasource: {
     url: prismaConfigDatasourceUrl(),
+    directUrl: prismaConfigDirectUrl(),
   },
 });

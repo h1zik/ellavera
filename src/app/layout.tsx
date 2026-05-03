@@ -3,6 +3,7 @@ import localFont from "next/font/local";
 import { unstable_cache } from "next/cache";
 import "./globals.css";
 import { LANDING_CACHE_TAG } from "@/lib/data";
+import { prisma } from "@/lib/prisma";
 
 const geistSans = localFont({
   src: "./fonts/GeistVF.woff",

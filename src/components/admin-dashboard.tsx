@@ -306,8 +306,26 @@ export function AdminDashboard({ initialSettings, initialSections, leads }: Prop
     );
   }
 
+  function scrollToAnchor(id: string) {
+    const el = document.getElementById(id);
+    el?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+
+  const navLinkClass =
+    "rounded-lg border-2 border-transparent px-3 py-2 text-left text-sm font-bold text-black/80 outline-none transition hover:border-black/15 hover:bg-black/[0.04] focus-visible:ring-2 focus-visible:ring-[var(--brand-primary)] focus-visible:ring-offset-2";
+
+  const sectionNavItems = useMemo(
+    () =>
+      sortedSections.map((s) => {
+        const full = s.name?.trim() || judulTipeSection(s.type);
+        const label = full.length > 36 ? `${full.slice(0, 36)}…` : full;
+        return { id: `admin-section-${s.id}`, label, title: full };
+      }),
+    [sortedSections],
+  );
+
   return (
-    <div className="space-y-8">
+    <div className="flex flex-col gap-6 lg:flex-row lg:items-start">
       {toast ? (
         <div
           role="alert"
@@ -330,10 +348,74 @@ export function AdminDashboard({ initialSettings, initialSections, leads }: Prop
         </div>
       ) : null}
 
-      <div className="flex justify-end">
+      <aside className="w-full shrink-0 lg:sticky lg:top-6 lg:w-56 lg:self-start">
+        <nav
+          className="retro-card flex flex-row gap-1 overflow-x-auto p-3 lg:flex-col lg:gap-0 lg:overflow-visible"
+          aria-label="Navigasi panel admin"
+        >
+          <p className="hidden w-full border-b border-black/10 pb-2 text-[10px] font-black uppercase tracking-[0.2em] text-black/45 lg:mb-2 lg:block">
+            Menu
+          </p>
+          <button
+            type="button"
+            className={`${navLinkClass} shrink-0 whitespace-nowrap lg:w-full lg:whitespace-normal`}
+            onClick={() => scrollToAnchor("admin-settings")}
+          >
+            Pengaturan
+          </button>
+          <button
+            type="button"
+            className={`${navLinkClass} shrink-0 whitespace-nowrap lg:w-full lg:whitespace-normal`}
+            onClick={() => scrollToAnchor("admin-sections")}
+          >
+            Section
+          </button>
+          <div
+            className="hidden h-px w-full bg-black/10 lg:my-2 lg:block"
+            role="presentation"
+          />
+          <p className="hidden px-1 pb-1 text-[10px] font-black uppercase tracking-wider text-black/40 lg:block">
+            Tiap section
+          </p>
+          <div className="flex flex-row gap-1 overflow-x-auto lg:max-h-[min(40vh,22rem)] lg:flex-col lg:overflow-y-auto lg:pr-1">
+            {sectionNavItems.map((item) => (
+              <button
+                key={item.id}
+                type="button"
+                className={`${navLinkClass} shrink-0 whitespace-nowrap pl-2 text-xs font-semibold text-black/75 lg:w-full lg:whitespace-normal lg:text-left lg:text-sm`}
+                title={item.title}
+                onClick={() => scrollToAnchor(item.id)}
+              >
+                {item.label}
+              </button>
+            ))}
+          </div>
+          <div
+            className="mx-1 hidden h-px w-full bg-black/10 lg:my-2 lg:block"
+            role="presentation"
+          />
+          <button
+            type="button"
+            className={`${navLinkClass} shrink-0 whitespace-nowrap lg:w-full lg:whitespace-normal`}
+            onClick={() => scrollToAnchor("admin-leads")}
+          >
+            Leads ({leads.length})
+          </button>
+          <button
+            type="button"
+            className="retro-button-alt mt-2 hidden w-full border-t border-black/10 px-3 pt-3 text-xs font-black lg:block"
+            onClick={async () => {
+              await fetch("/api/admin/logout", { method: "POST" });
+              router.push("/admin/login");
+              router.refresh();
+            }}
+          >
+            Keluar
+          </button>
+        </nav>
         <button
           type="button"
-          className="retro-button-alt px-4 py-2 text-sm font-black"
+          className="retro-button-alt mt-3 w-full px-3 py-2 text-xs font-black lg:hidden"
           onClick={async () => {
             await fetch("/api/admin/logout", { method: "POST" });
             router.push("/admin/login");
@@ -342,9 +424,10 @@ export function AdminDashboard({ initialSettings, initialSections, leads }: Prop
         >
           Keluar
         </button>
-      </div>
+      </aside>
 
-      <section className="retro-card">
+      <div className="min-w-0 flex-1 space-y-8">
+      <section id="admin-settings" className="scroll-mt-24 retro-card">
         <h2 className="section-title">Pengaturan situs</h2>
         <div className="mt-4 grid gap-3 md:grid-cols-2">
           <input
@@ -526,7 +609,7 @@ export function AdminDashboard({ initialSettings, initialSections, leads }: Prop
         </button>
       </section>
 
-      <section className="retro-card">
+      <section id="admin-sections" className="scroll-mt-24 retro-card">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
             <h2 className="section-title">Section halaman</h2>
@@ -618,7 +701,11 @@ export function AdminDashboard({ initialSettings, initialSections, leads }: Prop
 
         <div className="mt-6 space-y-6">
           {sortedSections.map((section) => (
-            <div key={section.id} className="retro-item space-y-3">
+            <div
+              key={section.id}
+              id={`admin-section-${section.id}`}
+              className="scroll-mt-24 retro-item space-y-3"
+            >
               <div className="flex flex-wrap items-center justify-between gap-2 border-b border-black/10 pb-2">
                 <p className="text-xs font-black uppercase tracking-widest text-black/50">
                   {judulTipeSection(section.type)}
@@ -756,7 +843,7 @@ export function AdminDashboard({ initialSettings, initialSections, leads }: Prop
         </button>
       </section>
 
-      <section className="retro-card">
+      <section id="admin-leads" className="scroll-mt-24 retro-card">
         <h2 className="section-title">Leads ({leads.length})</h2>
         <div className="mt-4 overflow-x-auto">
           <table className="w-full border-collapse text-left">
@@ -785,6 +872,7 @@ export function AdminDashboard({ initialSettings, initialSections, leads }: Prop
         </div>
       </section>
 
+      </div>
     </div>
   );
 }

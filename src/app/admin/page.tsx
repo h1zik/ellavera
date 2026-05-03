@@ -21,19 +21,21 @@ export default async function AdminPage() {
   const { settings, sections, leads } = await getAdminPageData();
 
   return (
-    <main className="min-h-screen space-y-6 bg-[var(--brand-secondary)] p-4 md:p-8">
-      <header className="retro-card mx-auto w-full max-w-6xl">
+    <main className="min-h-screen bg-[var(--brand-secondary)] p-4 md:p-8">
+      <div className="mx-auto w-full max-w-[min(88rem,100%)] space-y-6">
+      <header className="retro-card">
         <h1 className="text-4xl font-black">Ellavera CMS Dashboard</h1>
         <p className="mt-2 text-black/75">
           Atur teks, warna, gambar, urutan section, dan leads — semua lewat form, tanpa kode.
         </p>
       </header>
-      <div className="mx-auto w-full max-w-6xl">
+      <div className="w-full">
         <AdminDashboard
           initialSettings={settings}
           initialSections={sections}
           leads={leads}
         />
+      </div>
       </div>
     </main>
   );

@@ -2,6 +2,24 @@
 // npm install --save-dev prisma dotenv
 import "dotenv/config";
 import { defineConfig } from "prisma/config";
+import {
+  isPostgresConnectionString,
+  pickFirstPostgresUrl,
+} from "./src/lib/database-url";
+
+function prismaConfigDatasourceUrl(): string {
+  const explicit = process.env["DATABASE_URL"]?.trim();
+  if (isPostgresConnectionString(explicit)) return explicit!;
+
+  return (
+    pickFirstPostgresUrl(
+      process.env["SUPABASE_DATABASE_URL"],
+      process.env["NEXT_PUBLIC_SUPABASE_DATABASE_URL"],
+      process.env["POSTGRES_PRISMA_URL"],
+      process.env["POSTGRES_URL"],
+    ) ?? ""
+  );
+}
 
 export default defineConfig({
   schema: "prisma/schema.prisma",
@@ -9,10 +27,6 @@ export default defineConfig({
     path: "prisma/migrations",
   },
   datasource: {
-    // Netlify / Supabase often expose SUPABASE_DATABASE_URL; local dev uses DATABASE_URL in .env
-    url:
-      process.env["DATABASE_URL"]?.trim() ||
-      process.env["SUPABASE_DATABASE_URL"]?.trim() ||
-      "",
+    url: prismaConfigDatasourceUrl(),
   },
 });

@@ -21,7 +21,7 @@ const getSettingsForMetadata = unstable_cache(
     prisma.siteSettings.findUnique({
       where: { id: "default" },
     }),
-  ["site-settings-metadata-v1"],
+  ["site-settings-metadata-v2"],
   { tags: [LANDING_CACHE_TAG], revalidate: 300 },
 );
 
@@ -36,10 +36,16 @@ export async function generateMetadata(): Promise<Metadata> {
     "Ellavera membantu brand owner membangun brand kosmetik secara cepat, legal, dan scalable.";
   const keywords = settings?.seoKeywords;
 
+  const favicon = settings?.faviconUrl?.trim();
+  const icons = favicon
+    ? { icon: [{ url: favicon }] as const }
+    : undefined;
+
   return {
     title,
     description,
     keywords,
+    ...(icons ? { icons } : {}),
     openGraph: {
       title,
       description,

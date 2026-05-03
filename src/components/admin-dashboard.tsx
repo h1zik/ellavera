@@ -133,6 +133,8 @@ export function AdminDashboard({ initialSettings, initialSections, leads }: Prop
       seoDescription: settings.seoDescription ?? "",
       seoKeywords: settings.seoKeywords ?? "",
       heroImageUrl: settings.heroImageUrl ?? "",
+      adminLogoUrl: settings.adminLogoUrl ?? "",
+      faviconUrl: settings.faviconUrl ?? "",
       talentGalleryJson: settings.talentGalleryJson ?? "",
       locationAddress: settings.locationAddress ?? "",
       mapsUrl: normalizeHttpsUrl(settings.mapsUrl ?? ""),
@@ -328,6 +330,20 @@ export function AdminDashboard({ initialSettings, initialSections, leads }: Prop
         </div>
       ) : null}
 
+      <div className="flex justify-end">
+        <button
+          type="button"
+          className="retro-button-alt px-4 py-2 text-sm font-black"
+          onClick={async () => {
+            await fetch("/api/admin/logout", { method: "POST" });
+            router.push("/admin/login");
+            router.refresh();
+          }}
+        >
+          Keluar
+        </button>
+      </div>
+
       <section className="retro-card">
         <h2 className="section-title">Pengaturan situs</h2>
         <div className="mt-4 grid gap-3 md:grid-cols-2">
@@ -385,6 +401,45 @@ export function AdminDashboard({ initialSettings, initialSections, leads }: Prop
               currentUrl={settings.heroImageUrl ?? ""}
               onUrlChange={(url) =>
                 setSettings((prev) => ({ ...prev, heroImageUrl: url }))
+              }
+            />
+          </div>
+          <div className="md:col-span-2 space-y-2 rounded-xl border-2 border-black/10 bg-white/60 p-4">
+            <p className="text-sm font-bold">Logo halaman login admin</p>
+            <input
+              className="retro-input"
+              value={settings.adminLogoUrl ?? ""}
+              onChange={(e) =>
+                setSettings((prev) => ({ ...prev, adminLogoUrl: e.target.value }))
+              }
+              placeholder="URL logo (atau upload)"
+            />
+            <ImageUploadField
+              label="Upload logo admin"
+              currentUrl={settings.adminLogoUrl ?? ""}
+              onUrlChange={(url) =>
+                setSettings((prev) => ({ ...prev, adminLogoUrl: url }))
+              }
+            />
+          </div>
+          <div className="md:col-span-2 space-y-2 rounded-xl border-2 border-black/10 bg-white/60 p-4">
+            <p className="text-sm font-bold">Favicon situs</p>
+            <p className="text-xs font-semibold text-black/55">
+              Tampil di tab browser. Format .ico, .png, atau .svg (URL penuh).
+            </p>
+            <input
+              className="retro-input"
+              value={settings.faviconUrl ?? ""}
+              onChange={(e) =>
+                setSettings((prev) => ({ ...prev, faviconUrl: e.target.value }))
+              }
+              placeholder="URL favicon"
+            />
+            <ImageUploadField
+              label="Upload favicon"
+              currentUrl={settings.faviconUrl ?? ""}
+              onUrlChange={(url) =>
+                setSettings((prev) => ({ ...prev, faviconUrl: url }))
               }
             />
           </div>

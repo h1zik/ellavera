@@ -85,6 +85,10 @@ model SiteSettings {
   seoDescription   String?  @db.Text
   seoKeywords      String?
   heroImageUrl       String?
+  /** Logo halaman login admin (URL upload atau path). */
+  adminLogoUrl       String?
+  /** Favicon situs (URL .ico / .png). */
+  faviconUrl         String?
   /** JSON array: [{ "imageUrl": "https://...", "name": "...", "role": "..." }] */
   talentGalleryJson  String?  @db.Text
   updatedAt        DateTime @updatedAt

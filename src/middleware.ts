@@ -1,32 +1,43 @@
-import { NextRequest, NextResponse } from "next/server";
+import type { NextRequest } from "next/server";
+import { NextResponse } from "next/server";
+import { ADMIN_SESSION_COOKIE } from "@/lib/admin-session-constants";
+import { verifyAdminSessionTokenEdge } from "@/lib/admin-session-edge";
 
-function unauthorized() {
-  return new NextResponse("Authentication required", {
-    status: 401,
-    headers: {
-      "WWW-Authenticate": 'Basic realm="Ellavera Admin"',
-    },
-  });
+function isLoginPath(pathname: string) {
+  return pathname === "/admin/login" || pathname.startsWith("/admin/login/");
 }
 
-export function middleware(request: NextRequest) {
-  const authHeader = request.headers.get("authorization");
-  if (!authHeader?.startsWith("Basic ")) {
-    return unauthorized();
+function isLoginApi(pathname: string) {
+  return pathname === "/api/admin/login" || pathname.startsWith("/api/admin/login/");
+}
+
+export async function middleware(request: NextRequest) {
+  const { pathname } = request.nextUrl;
+
+  if (isLoginPath(pathname) || isLoginApi(pathname)) {
+    const token = request.cookies.get(ADMIN_SESSION_COOKIE)?.value;
+    if (isLoginPath(pathname) && token && (await verifyAdminSessionTokenEdge(token))) {
+      const next = request.nextUrl.searchParams.get("next");
+      const dest =
+        next && next.startsWith("/") && !next.startsWith("//") ? next : "/admin";
+      return NextResponse.redirect(new URL(dest, request.url));
+    }
+    return NextResponse.next();
   }
 
-  const base64Credentials = authHeader.split(" ")[1];
-  const credentials = atob(base64Credentials);
-  const [username, password] = credentials.split(":");
-
-  const expectedUser = process.env.ADMIN_USER || "admin";
-  const expectedPassword = process.env.ADMIN_PASSWORD || "ellavera123";
-
-  if (username !== expectedUser || password !== expectedPassword) {
-    return unauthorized();
+  const token = request.cookies.get(ADMIN_SESSION_COOKIE)?.value;
+  const ok = await verifyAdminSessionTokenEdge(token);
+  if (ok) {
+    return NextResponse.next();
   }
 
-  return NextResponse.next();
+  if (pathname.startsWith("/api/")) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const loginUrl = new URL("/admin/login", request.url);
+  loginUrl.searchParams.set("next", `${pathname}${request.nextUrl.search}`);
+  return NextResponse.redirect(loginUrl);
 }
 
 export const config = {

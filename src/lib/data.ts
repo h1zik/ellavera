@@ -1,8 +1,12 @@
 import { Prisma, SectionType } from "@prisma/client";
+import { unstable_cache } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { defaultSettings } from "@/lib/default-data";
 import { syncDefaultSectionsFromDefaults } from "@/lib/sync-default-sections";
 import { LandingData } from "@/lib/types";
+
+/** Pakai `revalidateTag(LANDING_CACHE_TAG)` setelah ubah settings/section dari API admin. */
+export const LANDING_CACHE_TAG = "landing";
 
 export async function ensureSeedData() {
   const settings = await prisma.siteSettings.findUnique({
@@ -16,19 +20,25 @@ export async function ensureSeedData() {
   await syncDefaultSectionsFromDefaults();
 }
 
+const getLandingDataCached = unstable_cache(
+  async (): Promise<LandingData> => {
+    await ensureSeedData();
+    const [settings, sections] = await Promise.all([
+      prisma.siteSettings.findUniqueOrThrow({ where: { id: "default" } }),
+      prisma.section.findMany({
+        where: { enabled: true },
+        orderBy: { order: "asc" },
+        include: { contents: { orderBy: { sortOrder: "asc" } } },
+      }),
+    ]);
+    return { settings, sections };
+  },
+  ["landing-data-v1"],
+  { tags: [LANDING_CACHE_TAG], revalidate: 300 },
+);
+
 export async function getLandingData(): Promise<LandingData> {
-  await ensureSeedData();
-
-  const [settings, sections] = await Promise.all([
-    prisma.siteSettings.findUniqueOrThrow({ where: { id: "default" } }),
-    prisma.section.findMany({
-      where: { enabled: true },
-      orderBy: { order: "asc" },
-      include: { contents: { orderBy: { sortOrder: "asc" } } },
-    }),
-  ]);
-
-  return { settings, sections };
+  return getLandingDataCached();
 }
 
 export async function getAllSectionsForAdmin() {

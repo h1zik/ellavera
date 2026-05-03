@@ -1,7 +1,7 @@
-import { revalidatePath } from "next/cache";
+import { revalidatePath, revalidateTag } from "next/cache";
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { updateSiteSettings } from "@/lib/data";
+import { LANDING_CACHE_TAG, updateSiteSettings } from "@/lib/data";
 
 /** Browser / Prisma sering kirim `null`; koersi ke string untuk Zod. */
 const str = z.union([z.string(), z.null(), z.undefined()]).transform((v) => (v == null ? "" : String(v)));
@@ -92,6 +92,7 @@ export async function PUT(request: Request) {
       mapsUrl: payload.mapsUrl.trim() || null,
     });
 
+    revalidateTag(LANDING_CACHE_TAG);
     revalidatePath("/");
     revalidatePath("/admin");
 

@@ -1,7 +1,8 @@
 import { SectionType } from "@prisma/client";
-import { revalidatePath } from "next/cache";
+import { revalidatePath, revalidateTag } from "next/cache";
 import { NextResponse } from "next/server";
 import { z } from "zod";
+import { LANDING_CACHE_TAG } from "@/lib/data";
 import { prisma } from "@/lib/prisma";
 
 const contentSchema = z.object({
@@ -54,6 +55,9 @@ export async function POST(request: Request) {
       },
       include: { contents: true },
     });
+    revalidateTag(LANDING_CACHE_TAG);
+    revalidatePath("/");
+    revalidatePath("/admin");
     return NextResponse.json(section);
   } catch {
     return NextResponse.json(
@@ -101,6 +105,7 @@ export async function PUT(request: Request) {
       }
     }
 
+    revalidateTag(LANDING_CACHE_TAG);
     revalidatePath("/");
     revalidatePath("/admin");
 

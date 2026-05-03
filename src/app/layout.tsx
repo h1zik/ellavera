@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import localFont from "next/font/local";
+import { unstable_cache } from "next/cache";
 import "./globals.css";
+import { LANDING_CACHE_TAG } from "@/lib/data";
 import { prisma } from "@/lib/prisma";
 
 const geistSans = localFont({
@@ -14,10 +16,17 @@ const geistMono = localFont({
   weight: "100 900",
 });
 
+const getSettingsForMetadata = unstable_cache(
+  () =>
+    prisma.siteSettings.findUnique({
+      where: { id: "default" },
+    }),
+  ["site-settings-metadata-v1"],
+  { tags: [LANDING_CACHE_TAG], revalidate: 300 },
+);
+
 export async function generateMetadata(): Promise<Metadata> {
-  const settings = await prisma.siteSettings.findUnique({
-    where: { id: "default" },
-  });
+  const settings = await getSettingsForMetadata();
 
   const title =
     settings?.seoTitle ??

@@ -37,8 +37,9 @@ export async function generateMetadata(): Promise<Metadata> {
   const keywords = settings?.seoKeywords;
 
   const favicon = settings?.faviconUrl?.trim();
-  const icons = favicon
-    ? { icon: [{ url: favicon }] as const }
+  /** Tanpa `as const` — Next `Metadata.icons` mengharuskan `Icon[]` mutable. */
+  const icons: Metadata["icons"] = favicon
+    ? { icon: [{ url: favicon }] }
     : undefined;
 
   return {

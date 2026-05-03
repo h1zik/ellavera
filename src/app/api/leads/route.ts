@@ -1,5 +1,7 @@
+import { revalidatePath, revalidateTag } from "next/cache";
 import { NextResponse } from "next/server";
 import { z } from "zod";
+import { ADMIN_PAGE_CACHE_TAG } from "@/lib/data";
 import { prisma } from "@/lib/prisma";
 
 const leadSchema = z.object({
@@ -23,6 +25,9 @@ export async function POST(request: Request) {
         message: payload.message,
       },
     });
+
+    revalidateTag(ADMIN_PAGE_CACHE_TAG);
+    revalidatePath("/admin");
 
     return NextResponse.json({ ok: true, id: lead.id }, { status: 201 });
   } catch {

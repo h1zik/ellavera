@@ -1,0 +1,95 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Get a free hosted Postgres database in seconds: `npx create-db`
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum SectionType {
+  HERO
+  PROCESS
+  SERVICES
+  TESTIMONIALS
+  EDUCATIONAL
+  FAQ
+  CONTACT
+}
+
+enum ContentValueType {
+  TEXT
+  MARKDOWN
+  JSON
+  IMAGE_URL
+  URL
+}
+
+model Section {
+  id          String      @id @default(cuid())
+  slug        String      @unique
+  name        String
+  type        SectionType
+  enabled     Boolean     @default(true)
+  order       Int
+  title       String?
+  subtitle    String?
+  description String?
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+  contents    Content[]
+
+  @@index([enabled, order])
+}
+
+model Content {
+  id         String           @id @default(cuid())
+  sectionId  String
+  key        String
+  value      String           @db.Text
+  valueType  ContentValueType @default(TEXT)
+  sortOrder  Int              @default(0)
+  createdAt  DateTime         @default(now())
+  updatedAt  DateTime         @updatedAt
+  section    Section          @relation(fields: [sectionId], references: [id], onDelete: Cascade)
+
+  @@index([sectionId, sortOrder])
+  @@unique([sectionId, key, sortOrder])
+}
+
+model SiteSettings {
+  id               String   @id @default("default")
+  siteName         String   @default("Ellavera")
+  tagline          String   @default("Maklon Kosmetik Anti Ribet untuk Brand Owner Gen-Z")
+  brandPurpose     String   @db.Text
+  primaryColor     String   @default("#26CCC2")
+  secondaryColor   String   @default("#FAE3C7")
+  accentColor      String   @default("#FFB76C")
+  contactEmail     String?
+  contactWhatsapp  String?
+  seoTitle         String?
+  seoDescription   String?  @db.Text
+  seoKeywords      String?
+  heroImageUrl     String?
+  updatedAt        DateTime @updatedAt
+}
+
+model Lead {
+  id          String   @id @default(cuid())
+  fullName    String
+  brandName   String?
+  email       String
+  phone       String?
+  message     String   @db.Text
+  source      String   @default("landing-page")
+  status      String   @default("new")
+  createdAt   DateTime @default(now())
+
+  @@index([createdAt])
+  @@index([status])
+}

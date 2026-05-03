@@ -3,25 +3,75 @@
 @tailwind utilities;
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+  --background: #fae3c7;
+  --foreground: #1a1a1a;
+  --brand-primary: #26ccc2;
+  --brand-secondary: #fae3c7;
+  --brand-accent: #ffb76c;
 }
 
 body {
   color: var(--foreground);
   background: var(--background);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-geist-sans), Arial, Helvetica, sans-serif;
 }
 
 @layer utilities {
   .text-balance {
     text-wrap: balance;
+  }
+}
+
+@layer components {
+  .retro-card {
+    @apply rounded-3xl border-4 border-black p-6 md:p-10;
+    background: var(--brand-secondary);
+    box-shadow: 10px 10px 0 0 var(--brand-primary);
+  }
+
+  .retro-item {
+    @apply rounded-2xl border-4 border-black p-4 transition-transform duration-200;
+    background: #fffaf1;
+    box-shadow: 6px 6px 0 0 var(--brand-accent);
+  }
+
+  .retro-item:hover {
+    transform: translate(-2px, -2px);
+  }
+
+  .retro-input {
+    @apply w-full rounded-xl border-4 border-black bg-white px-4 py-3 outline-none focus:ring-4;
+    --tw-ring-color: var(--brand-primary);
+  }
+
+  .retro-button {
+    @apply inline-flex items-center justify-center rounded-xl border-4 border-black px-5 py-3 font-black uppercase tracking-wide transition-transform;
+    background: var(--brand-primary);
+  }
+
+  .retro-button:hover {
+    transform: translate(-2px, -2px);
+  }
+
+  .retro-button-alt {
+    @apply inline-flex items-center justify-center rounded-xl border-4 border-black px-5 py-3 font-black uppercase tracking-wide transition-transform;
+    background: var(--brand-accent);
+  }
+
+  .retro-button-alt:hover {
+    transform: translate(-2px, -2px);
+  }
+
+  .section-title {
+    @apply text-3xl font-black md:text-4xl;
+  }
+
+  .section-description {
+    @apply text-base md:text-lg;
+  }
+
+  .badge {
+    @apply inline-block rounded-full border-4 border-black px-4 py-2 text-sm font-black uppercase tracking-wide;
+    background: var(--brand-primary);
   }
 }

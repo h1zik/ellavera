@@ -39,6 +39,13 @@ function normalizeHttpsUrl(raw: string): string {
 
 type ToastState = { message: string; variant: "success" | "error" } | null;
 
+/** Satu layar: pengaturan, hub section, satu section, atau leads. */
+type AdminView = "settings" | "sections-hub" | "leads" | `section:${string}`;
+
+function isSectionView(v: AdminView): v is `section:${string}` {
+  return v.startsWith("section:");
+}
+
 function judulTipeSection(t: SectionType): string {
   const map: Record<SectionType, string> = {
     [SectionType.HERO]: "Hero (pembuka halaman)",
@@ -118,6 +125,16 @@ export function AdminDashboard({ initialSettings, initialSections, leads }: Prop
     () => sortedSections.reduce((m, s) => Math.max(m, s.order), 0),
     [sortedSections],
   );
+
+  const [activeView, setActiveView] = useState<AdminView>("sections-hub");
+
+  useEffect(() => {
+    if (!isSectionView(activeView)) return;
+    const id = activeView.slice("section:".length);
+    if (!sections.some((s) => s.id === id)) {
+      setActiveView("sections-hub");
+    }
+  }, [sections, activeView]);
 
   async function saveSettings() {
     const payload = {
@@ -228,8 +245,10 @@ export function AdminDashboard({ initialSettings, initialSections, leads }: Prop
         pushToast(data?.error || "Gagal membuat section.", "error");
         return;
       }
-      setSections((prev) => [...prev, data as SectionWithContents]);
-      pushToast("Section baru dibuat. Lanjut edit lalu simpan section.", "success");
+      const created = data as SectionWithContents;
+      setSections((prev) => [...prev, created]);
+      setActiveView(`section:${created.id}`);
+      pushToast("Section baru dibuat. Silakan edit lalu simpan.", "success");
       setShowCreate(false);
       setCreateForm({
         name: "",
@@ -256,6 +275,7 @@ export function AdminDashboard({ initialSettings, initialSections, leads }: Prop
     });
     if (res.ok) {
       setSections((prev) => prev.filter((s) => s.id !== id));
+      setActiveView((v) => (v === `section:${id}` ? "sections-hub" : v));
       pushToast("Section berhasil dihapus.", "success");
       router.refresh();
     } else {
@@ -306,11 +326,6 @@ export function AdminDashboard({ initialSettings, initialSections, leads }: Prop
     );
   }
 
-  function scrollToAnchor(id: string) {
-    const el = document.getElementById(id);
-    el?.scrollIntoView({ behavior: "smooth", block: "start" });
-  }
-
   const navLinkClass =
     "rounded-lg border-2 border-transparent px-3 py-2 text-left text-sm font-bold text-black/80 outline-none transition hover:border-black/15 hover:bg-black/[0.04] focus-visible:ring-2 focus-visible:ring-[var(--brand-primary)] focus-visible:ring-offset-2";
 
@@ -319,10 +334,156 @@ export function AdminDashboard({ initialSettings, initialSections, leads }: Prop
       sortedSections.map((s) => {
         const full = s.name?.trim() || judulTipeSection(s.type);
         const label = full.length > 36 ? `${full.slice(0, 36)}…` : full;
-        return { id: `admin-section-${s.id}`, label, title: full };
+        const view = `section:${s.id}` as AdminView;
+        return { view, label, title: full };
       }),
     [sortedSections],
   );
+
+  function navBtnClass(active: boolean) {
+    return [
+      navLinkClass,
+      active
+        ? "border-[var(--brand-primary)] bg-[color-mix(in_srgb,var(--brand-primary)_12%,transparent)]"
+        : "",
+    ].join(" ");
+  }
+
+  function renderSectionEditor(section: SectionWithContents) {
+    return (
+      <div className="retro-item space-y-3">
+        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-black/10 pb-2">
+          <p className="text-xs font-black uppercase tracking-widest text-black/50">
+            {judulTipeSection(section.type)}
+          </p>
+          <button
+            type="button"
+            className="text-xs font-bold uppercase text-red-600 underline"
+            onClick={() => deleteSection(section.id, section.name)}
+          >
+            Hapus section
+          </button>
+        </div>
+        <div className="grid gap-2 md:grid-cols-4">
+          <input
+            className="retro-input"
+            value={section.name}
+            onChange={(e) =>
+              setSections((prev) =>
+                prev.map((it) =>
+                  it.id === section.id ? { ...it, name: e.target.value } : it,
+                ),
+              )
+            }
+            placeholder="Nama navigasi"
+          />
+          <input
+            className="retro-input"
+            value={section.slug}
+            onChange={(e) =>
+              setSections((prev) =>
+                prev.map((it) =>
+                  it.id === section.id ? { ...it, slug: e.target.value } : it,
+                ),
+              )
+            }
+            placeholder="slug"
+          />
+          <input
+            className="retro-input"
+            type="number"
+            value={section.order}
+            onChange={(e) =>
+              setSections((prev) =>
+                prev.map((it) =>
+                  it.id === section.id ? { ...it, order: Number(e.target.value) } : it,
+                ),
+              )
+            }
+            placeholder="Urutan"
+          />
+          <label className="flex items-center gap-2 font-bold">
+            <input
+              type="checkbox"
+              checked={section.enabled}
+              onChange={(e) =>
+                setSections((prev) =>
+                  prev.map((it) =>
+                    it.id === section.id ? { ...it, enabled: e.target.checked } : it,
+                  ),
+                )
+              }
+            />
+            Tampil
+          </label>
+        </div>
+        <input
+          className="retro-input"
+          value={section.title ?? ""}
+          onChange={(e) =>
+            setSections((prev) =>
+              prev.map((it) =>
+                it.id === section.id ? { ...it, title: e.target.value } : it,
+              ),
+            )
+          }
+          placeholder="Judul"
+        />
+        <input
+          className="retro-input"
+          value={section.subtitle ?? ""}
+          onChange={(e) =>
+            setSections((prev) =>
+              prev.map((it) =>
+                it.id === section.id ? { ...it, subtitle: e.target.value } : it,
+              ),
+            )
+          }
+          placeholder="Subtitle (mis. Hero)"
+        />
+        <textarea
+          className="retro-input min-h-[80px]"
+          value={section.description ?? ""}
+          onChange={(e) =>
+            setSections((prev) =>
+              prev.map((it) =>
+                it.id === section.id ? { ...it, description: e.target.value } : it,
+              ),
+            )
+          }
+          placeholder="Deskripsi section"
+        />
+
+        <div className="space-y-3 pt-2">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div>
+              <p className="text-sm font-bold uppercase">Isi di halaman</p>
+              <p className="mt-1 max-w-xl text-xs text-black/55">
+                Tambah item (langkah, logo, FAQ, dll.) — form singkat, tanpa kode. Ganti
+                &quot;Jenis konten&quot; jika perlu.
+              </p>
+            </div>
+            <button
+              type="button"
+              className="retro-button-alt px-3 py-1.5 text-xs"
+              onClick={() => addContentRow(section)}
+            >
+              + Tambah item
+            </button>
+          </div>
+          {section.contents.map((content, index) => (
+            <ContentBlockEditor
+              key={content.id}
+              sectionType={section.type}
+              content={content}
+              onPatch={(patch) => patchContent(section.id, index, patch)}
+              onRemove={() => removeContentRow(section.id, index)}
+            />
+          ))}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col gap-6 lg:flex-row lg:items-start">
@@ -358,15 +519,15 @@ export function AdminDashboard({ initialSettings, initialSections, leads }: Prop
           </p>
           <button
             type="button"
-            className={`${navLinkClass} shrink-0 whitespace-nowrap lg:w-full lg:whitespace-normal`}
-            onClick={() => scrollToAnchor("admin-settings")}
+            className={`${navBtnClass(activeView === "settings")} shrink-0 whitespace-nowrap lg:w-full lg:whitespace-normal`}
+            onClick={() => setActiveView("settings")}
           >
             Pengaturan
           </button>
           <button
             type="button"
-            className={`${navLinkClass} shrink-0 whitespace-nowrap lg:w-full lg:whitespace-normal`}
-            onClick={() => scrollToAnchor("admin-sections")}
+            className={`${navBtnClass(activeView === "sections-hub")} shrink-0 whitespace-nowrap lg:w-full lg:whitespace-normal`}
+            onClick={() => setActiveView("sections-hub")}
           >
             Section
           </button>
@@ -380,11 +541,11 @@ export function AdminDashboard({ initialSettings, initialSections, leads }: Prop
           <div className="flex flex-row gap-1 overflow-x-auto lg:max-h-[min(40vh,22rem)] lg:flex-col lg:overflow-y-auto lg:pr-1">
             {sectionNavItems.map((item) => (
               <button
-                key={item.id}
+                key={item.view}
                 type="button"
-                className={`${navLinkClass} shrink-0 whitespace-nowrap pl-2 text-xs font-semibold text-black/75 lg:w-full lg:whitespace-normal lg:text-left lg:text-sm`}
+                className={`${navBtnClass(activeView === item.view)} shrink-0 whitespace-nowrap pl-2 text-xs font-semibold text-black/75 lg:w-full lg:whitespace-normal lg:text-left lg:text-sm`}
                 title={item.title}
-                onClick={() => scrollToAnchor(item.id)}
+                onClick={() => setActiveView(item.view)}
               >
                 {item.label}
               </button>
@@ -396,8 +557,8 @@ export function AdminDashboard({ initialSettings, initialSections, leads }: Prop
           />
           <button
             type="button"
-            className={`${navLinkClass} shrink-0 whitespace-nowrap lg:w-full lg:whitespace-normal`}
-            onClick={() => scrollToAnchor("admin-leads")}
+            className={`${navBtnClass(activeView === "leads")} shrink-0 whitespace-nowrap lg:w-full lg:whitespace-normal`}
+            onClick={() => setActiveView("leads")}
           >
             Leads ({leads.length})
           </button>
@@ -426,8 +587,9 @@ export function AdminDashboard({ initialSettings, initialSections, leads }: Prop
         </button>
       </aside>
 
-      <div className="min-w-0 flex-1 space-y-8">
-      <section id="admin-settings" className="scroll-mt-24 retro-card">
+      <div className="min-w-0 min-h-0 flex-1 overflow-y-auto pb-8 [scrollbar-gutter:stable]">
+        {activeView === "settings" ? (
+      <section className="retro-card">
         <h2 className="section-title">Pengaturan situs</h2>
         <div className="mt-4 grid gap-3 md:grid-cols-2">
           <input
@@ -608,14 +770,16 @@ export function AdminDashboard({ initialSettings, initialSections, leads }: Prop
           Simpan pengaturan
         </button>
       </section>
+        ) : null}
 
-      <section id="admin-sections" className="scroll-mt-24 retro-card">
+        {activeView === "sections-hub" ? (
+      <section className="retro-card">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
             <h2 className="section-title">Section halaman</h2>
             <p className="mt-2 text-sm text-black/70">
-              Buat, edit, atau hapus section. Isi tiap section pakai form pendek — tanpa menulis
-              kode.
+              Pilih section di sidebar atau di bawah untuk mengedit isinya. Buat section baru di
+              sini.
             </p>
           </div>
           <button
@@ -699,151 +863,75 @@ export function AdminDashboard({ initialSettings, initialSections, leads }: Prop
           </div>
         ) : null}
 
-        <div className="mt-6 space-y-6">
-          {sortedSections.map((section) => (
-            <div
-              key={section.id}
-              id={`admin-section-${section.id}`}
-              className="scroll-mt-24 retro-item space-y-3"
-            >
-              <div className="flex flex-wrap items-center justify-between gap-2 border-b border-black/10 pb-2">
-                <p className="text-xs font-black uppercase tracking-widest text-black/50">
+        <div className="mt-6 grid gap-3 sm:grid-cols-2">
+          {sortedSections.length === 0 ? (
+            <p className="text-sm font-semibold text-black/55 sm:col-span-2">
+              Belum ada section. Tambah lewat &quot;+ Section baru&quot;.
+            </p>
+          ) : (
+            sortedSections.map((section) => (
+              <button
+                key={section.id}
+                type="button"
+                className="retro-item flex w-full flex-col items-start gap-2 border-2 border-black/10 p-4 text-left transition hover:border-[var(--brand-primary)] hover:bg-[color-mix(in_srgb,var(--brand-primary)_8%,transparent)]"
+                onClick={() => setActiveView(`section:${section.id}`)}
+              >
+                <p className="text-[10px] font-black uppercase tracking-widest text-black/45">
                   {judulTipeSection(section.type)}
                 </p>
-                <button
-                  type="button"
-                  className="text-xs font-bold uppercase text-red-600 underline"
-                  onClick={() => deleteSection(section.id, section.name)}
-                >
-                  Hapus section
-                </button>
-              </div>
-              <div className="grid gap-2 md:grid-cols-4">
-                <input
-                  className="retro-input"
-                  value={section.name}
-                  onChange={(e) =>
-                    setSections((prev) =>
-                      prev.map((it) =>
-                        it.id === section.id ? { ...it, name: e.target.value } : it,
-                      ),
-                    )
-                  }
-                  placeholder="Nama navigasi"
-                />
-                <input
-                  className="retro-input"
-                  value={section.slug}
-                  onChange={(e) =>
-                    setSections((prev) =>
-                      prev.map((it) =>
-                        it.id === section.id ? { ...it, slug: e.target.value } : it,
-                      ),
-                    )
-                  }
-                  placeholder="slug"
-                />
-                <input
-                  className="retro-input"
-                  type="number"
-                  value={section.order}
-                  onChange={(e) =>
-                    setSections((prev) =>
-                      prev.map((it) =>
-                        it.id === section.id ? { ...it, order: Number(e.target.value) } : it,
-                      ),
-                    )
-                  }
-                  placeholder="Urutan"
-                />
-                <label className="flex items-center gap-2 font-bold">
-                  <input
-                    type="checkbox"
-                    checked={section.enabled}
-                    onChange={(e) =>
-                      setSections((prev) =>
-                        prev.map((it) =>
-                          it.id === section.id ? { ...it, enabled: e.target.checked } : it,
-                        ),
-                      )
-                    }
-                  />
-                  Tampil
-                </label>
-              </div>
-              <input
-                className="retro-input"
-                value={section.title ?? ""}
-                onChange={(e) =>
-                  setSections((prev) =>
-                    prev.map((it) =>
-                      it.id === section.id ? { ...it, title: e.target.value } : it,
-                    ),
-                  )
-                }
-                placeholder="Judul"
-              />
-              <input
-                className="retro-input"
-                value={section.subtitle ?? ""}
-                onChange={(e) =>
-                  setSections((prev) =>
-                    prev.map((it) =>
-                      it.id === section.id ? { ...it, subtitle: e.target.value } : it,
-                    ),
-                  )
-                }
-                placeholder="Subtitle (mis. Hero)"
-              />
-              <textarea
-                className="retro-input min-h-[80px]"
-                value={section.description ?? ""}
-                onChange={(e) =>
-                  setSections((prev) =>
-                    prev.map((it) =>
-                      it.id === section.id ? { ...it, description: e.target.value } : it,
-                    ),
-                  )
-                }
-                placeholder="Deskripsi section"
-              />
-
-              <div className="space-y-3 pt-2">
-                <div className="flex flex-wrap items-center justify-between gap-2">
-                  <div>
-                    <p className="text-sm font-bold uppercase">Isi di halaman</p>
-                    <p className="mt-1 max-w-xl text-xs text-black/55">
-                      Tambah item (langkah, logo, FAQ, dll.) — form singkat, tanpa kode. Ganti
-                      &quot;Jenis konten&quot; jika perlu.
-                    </p>
-                  </div>
-                  <button
-                    type="button"
-                    className="retro-button-alt px-3 py-1.5 text-xs"
-                    onClick={() => addContentRow(section)}
-                  >
-                    + Tambah item
-                  </button>
-                </div>
-                {section.contents.map((content, index) => (
-                  <ContentBlockEditor
-                    key={content.id}
-                    sectionType={section.type}
-                    content={content}
-                    onPatch={(patch) => patchContent(section.id, index, patch)}
-                    onRemove={() => removeContentRow(section.id, index)}
-                  />
-                ))}
-              </div>
-            </div>
-          ))}
+                <p className="text-lg font-black leading-tight">{section.name}</p>
+                <p className="text-xs text-black/50">/{section.slug}</p>
+                <span className="mt-1 text-sm font-black text-[var(--brand-primary)]">
+                  Edit section →
+                </span>
+              </button>
+            ))
+          )}
         </div>
         <button type="button" className="retro-button mt-6" onClick={saveSections}>
           Simpan semua section
         </button>
       </section>
+        ) : null}
 
-      <section id="admin-leads" className="scroll-mt-24 retro-card">
+        {isSectionView(activeView) ? (
+      <section className="retro-card">
+        {(() => {
+          const sid = activeView.slice("section:".length);
+          const section = sortedSections.find((s) => s.id === sid);
+          if (!section) {
+            return (
+              <p className="text-sm text-black/60">
+                Section tidak ditemukan. Kembali ke daftar Section.
+              </p>
+            );
+          }
+          return (
+            <>
+              <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+                <button
+                  type="button"
+                  className="retro-button-alt px-4 py-2 text-sm font-black"
+                  onClick={() => setActiveView("sections-hub")}
+                >
+                  ← Daftar section
+                </button>
+                <p className="text-sm font-bold text-black/60">
+                  {section.name} · {judulTipeSection(section.type)}
+                </p>
+              </div>
+              {renderSectionEditor(section)}
+              <button type="button" className="retro-button mt-6" onClick={saveSections}>
+                Simpan semua section
+              </button>
+            </>
+          );
+        })()}
+      </section>
+        ) : null}
+
+        {activeView === "leads" ? (
+      <section className="retro-card">
         <h2 className="section-title">Leads ({leads.length})</h2>
         <div className="mt-4 overflow-x-auto">
           <table className="w-full border-collapse text-left">
@@ -871,7 +959,7 @@ export function AdminDashboard({ initialSettings, initialSections, leads }: Prop
           </table>
         </div>
       </section>
-
+        ) : null}
       </div>
     </div>
   );

@@ -12,9 +12,18 @@ function isLoginApi(pathname: string) {
 }
 
 export async function middleware(request: NextRequest) {
-  try {
-    const { pathname } = request.nextUrl;
+  const { pathname } = request.nextUrl;
 
+  /** Health di Edge: tanpa Prisma/worker. Kalau ini tetap 503, request tidak sampai ke Next (proxy/start/root). */
+  if (pathname === "/api/health") {
+    return NextResponse.json({
+      ok: true,
+      via: "edge-middleware",
+      time: new Date().toISOString(),
+    });
+  }
+
+  try {
     if (isLoginPath(pathname) || isLoginApi(pathname)) {
       const token = request.cookies.get(ADMIN_SESSION_COOKIE)?.value;
       if (isLoginPath(pathname) && token && (await verifyAdminSessionTokenEdge(token))) {
@@ -40,7 +49,6 @@ export async function middleware(request: NextRequest) {
     loginUrl.searchParams.set("next", `${pathname}${request.nextUrl.search}`);
     return NextResponse.redirect(loginUrl);
   } catch {
-    const { pathname } = request.nextUrl;
     if (pathname.startsWith("/api/")) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
@@ -49,5 +57,5 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/admin/:path*", "/api/admin/:path*"],
+  matcher: ["/api/health", "/admin/:path*", "/api/admin/:path*"],
 };

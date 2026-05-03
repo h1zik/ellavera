@@ -2,76 +2,357 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ─── Brand tokens (admin dapat override via inline style di page) ─── */
 :root {
   --background: #fae3c7;
-  --foreground: #1a1a1a;
+  --foreground: #141414;
   --brand-primary: #26ccc2;
   --brand-secondary: #fae3c7;
   --brand-accent: #ffb76c;
+  --retro-black: #0d0d0d;
+  --retro-shadow-shift: 6px;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+::selection {
+  background: color-mix(in srgb, var(--brand-primary) 45%, white);
+  color: var(--retro-black);
 }
 
 body {
   color: var(--foreground);
-  background: var(--background);
-  font-family: var(--font-geist-sans), Arial, Helvetica, sans-serif;
+  background-color: var(--background);
+  /* Layer: cream → soft diagonal color waves → micro grid */
+  background-image:
+    linear-gradient(
+      165deg,
+      color-mix(in srgb, var(--brand-primary) 18%, transparent) 0%,
+      transparent 42%
+    ),
+    linear-gradient(
+      345deg,
+      color-mix(in srgb, var(--brand-accent) 22%, transparent) 0%,
+      transparent 38%
+    ),
+    radial-gradient(
+      circle at 1px 1px,
+      color-mix(in srgb, var(--retro-black) 7%, transparent) 1px,
+      transparent 0
+    );
+  background-size:
+    100% 100%,
+    100% 100%,
+    24px 24px;
+  background-attachment: fixed;
+  font-family: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  letter-spacing: -0.01em;
 }
 
 @layer utilities {
   .text-balance {
     text-wrap: balance;
   }
+
+  .retro-focus {
+    @apply outline-none ring-offset-2 ring-offset-[var(--brand-secondary)];
+  }
+
+  .retro-focus:focus-visible {
+    @apply ring-4;
+    --tw-ring-color: var(--brand-primary);
+  }
 }
 
 @layer components {
-  .retro-card {
-    @apply rounded-3xl border-4 border-black p-6 md:p-10;
-    background: var(--brand-secondary);
-    box-shadow: 10px 10px 0 0 var(--brand-primary);
+  /* ═══ Page chrome ═══ */
+  .retro-shell {
+    @apply relative;
   }
 
-  .retro-item {
-    @apply rounded-2xl border-4 border-black p-4 transition-transform duration-200;
-    background: #fffaf1;
-    box-shadow: 6px 6px 0 0 var(--brand-accent);
+  .retro-top-stripes {
+    display: flex;
+    height: 10px;
+    width: 100%;
+    overflow: hidden;
+    border-radius: 999px;
+    box-shadow: 0 3px 0 0 var(--retro-black);
   }
 
-  .retro-item:hover {
-    transform: translate(-2px, -2px);
-  }
-
-  .retro-input {
-    @apply w-full rounded-xl border-4 border-black bg-white px-4 py-3 outline-none focus:ring-4;
-    --tw-ring-color: var(--brand-primary);
-  }
-
-  .retro-button {
-    @apply inline-flex items-center justify-center rounded-xl border-4 border-black px-5 py-3 font-black uppercase tracking-wide transition-transform;
+  .retro-top-stripes span:nth-child(1) {
+    flex: 1;
     background: var(--brand-primary);
   }
 
-  .retro-button:hover {
-    transform: translate(-2px, -2px);
+  .retro-top-stripes span:nth-child(2) {
+    flex: 1;
+    background: var(--brand-secondary);
+    border-left: 2px solid var(--retro-black);
+    border-right: 2px solid var(--retro-black);
   }
 
-  .retro-button-alt {
-    @apply inline-flex items-center justify-center rounded-xl border-4 border-black px-5 py-3 font-black uppercase tracking-wide transition-transform;
+  .retro-top-stripes span:nth-child(3) {
+    flex: 1;
     background: var(--brand-accent);
   }
 
-  .retro-button-alt:hover {
+  .retro-header-panel {
+    @apply relative overflow-hidden rounded-2xl border-[3px] border-[var(--retro-black)] p-5 md:p-6;
+    background: linear-gradient(
+      125deg,
+      #fffef8 0%,
+      color-mix(in srgb, var(--brand-secondary) 65%, white) 55%,
+      color-mix(in srgb, var(--brand-primary) 12%, white) 100%
+    );
+    box-shadow: var(--retro-shadow-shift) var(--retro-shadow-shift) 0 0 var(--retro-black);
+  }
+
+  .retro-header-panel::after {
+    content: "";
+    position: absolute;
+    right: -20%;
+    top: -40%;
+    height: 140%;
+    width: 45%;
+    border-radius: 50%;
+    background: color-mix(in srgb, var(--brand-accent) 35%, transparent);
+    pointer-events: none;
+  }
+
+  .retro-nav-link {
+    @apply retro-focus relative inline-flex items-center rounded-full border-2 border-[var(--retro-black)] px-3 py-2 text-[11px] font-black uppercase tracking-wider transition-transform duration-200 md:text-xs;
+    background: color-mix(in srgb, var(--brand-accent) 88%, white);
+    box-shadow: 3px 3px 0 0 var(--retro-black);
+  }
+
+  .retro-nav-link:hover {
     transform: translate(-2px, -2px);
+    box-shadow: 5px 5px 0 0 var(--retro-black);
+    background: color-mix(in srgb, var(--brand-primary) 35%, white);
+  }
+
+  .retro-footer-panel {
+    @apply rounded-2xl border-[3px] border-[var(--retro-black)] p-5 md:p-6;
+    background: linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--brand-secondary) 90%, white) 0%,
+      color-mix(in srgb, var(--brand-primary) 15%, white) 100%
+    );
+    box-shadow: var(--retro-shadow-shift) var(--retro-shadow-shift) 0 0 var(--brand-accent);
+  }
+
+  /* ═══ Sections ═══ */
+  .retro-card {
+    @apply relative rounded-2xl border-[3px] border-[var(--retro-black)] p-6 md:p-10;
+    background: linear-gradient(
+      155deg,
+      #fffef9 0%,
+      var(--brand-secondary) 48%,
+      color-mix(in srgb, var(--brand-accent) 22%, white) 110%
+    );
+    box-shadow: var(--retro-shadow-shift) var(--retro-shadow-shift) 0 0 var(--brand-primary);
+  }
+
+  .section-tone-alt.retro-card {
+    background: linear-gradient(
+      195deg,
+      color-mix(in srgb, var(--brand-primary) 22%, white) 0%,
+      var(--brand-secondary) 45%,
+      #fffef9 100%
+    );
+    box-shadow: var(--retro-shadow-shift) var(--retro-shadow-shift) 0 0 var(--brand-accent);
+  }
+
+  .retro-section-kicker {
+    @apply mb-2 inline-flex items-center gap-2 rounded-full border-2 border-[var(--retro-black)] bg-white px-3 py-1 text-[10px] font-black uppercase tracking-[0.25em] text-[var(--retro-black)] md:text-[11px];
+    box-shadow: 2px 2px 0 0 var(--brand-primary);
+  }
+
+  .retro-item {
+    @apply rounded-xl border-2 border-black/15 p-4 transition-all duration-200;
+    background: linear-gradient(
+      160deg,
+      rgba(255, 255, 255, 0.97) 0%,
+      color-mix(in srgb, var(--brand-secondary) 40%, white) 100%
+    );
+    box-shadow:
+      4px 4px 0 0 rgba(13, 13, 13, 0.06),
+      inset 0 1px 0 rgba(255, 255, 255, 0.85);
+  }
+
+  .retro-item:hover {
+    transform: translate(-3px, -3px);
+    border-color: color-mix(in srgb, var(--brand-primary) 45%, var(--retro-black));
+    box-shadow:
+      6px 6px 0 0 color-mix(in srgb, var(--brand-primary) 65%, var(--retro-black));
+  }
+
+  .retro-item-playful {
+    border-color: var(--retro-black);
+    box-shadow: 5px 5px 0 0 color-mix(in srgb, var(--brand-primary) 75%, var(--retro-black));
+  }
+
+  .retro-item-playful:hover {
+    transform: translate(-4px, -4px) rotate(-0.6deg);
+    box-shadow: 8px 8px 0 0 color-mix(in srgb, var(--brand-accent) 80%, var(--retro-black));
+  }
+
+  .playful-tint-cyan {
+    background: linear-gradient(
+      145deg,
+      #ffffff 0%,
+      color-mix(in srgb, var(--brand-primary) 28%, white) 100%
+    );
+  }
+
+  .playful-tint-orange {
+    background: linear-gradient(
+      145deg,
+      #ffffff 0%,
+      color-mix(in srgb, var(--brand-accent) 32%, white) 100%
+    );
+  }
+
+  .retro-input {
+    @apply retro-focus w-full rounded-xl border-2 border-black/15 bg-white px-4 py-3 shadow-[3px_3px_0_0_rgba(13,13,13,0.08)] transition-shadow;
+  }
+
+  .retro-input:focus {
+    border-color: color-mix(in srgb, var(--brand-primary) 70%, var(--retro-black));
+    box-shadow:
+      4px 4px 0 0 var(--brand-primary),
+      0 0 0 3px color-mix(in srgb, var(--brand-primary) 35%, transparent);
+  }
+
+  .retro-button {
+    @apply retro-focus inline-flex items-center justify-center rounded-xl border-2 border-[var(--retro-black)] px-6 py-3.5 text-sm font-black uppercase tracking-wide text-[var(--retro-black)] transition-transform duration-200;
+    background: var(--brand-primary);
+    box-shadow: 5px 5px 0 0 var(--retro-black);
+  }
+
+  .retro-button:hover {
+    transform: translate(-3px, -3px);
+    box-shadow: 8px 8px 0 0 var(--retro-black);
+    filter: brightness(1.05);
+  }
+
+  .retro-button:active {
+    transform: translate(1px, 1px);
+    box-shadow: 3px 3px 0 0 var(--retro-black);
+  }
+
+  .retro-button-alt {
+    @apply retro-focus inline-flex items-center justify-center rounded-xl border-2 border-[var(--retro-black)] px-6 py-3.5 text-sm font-black uppercase tracking-wide text-[var(--retro-black)] transition-transform duration-200;
+    background: var(--brand-accent);
+    box-shadow: 5px 5px 0 0 var(--retro-black);
+  }
+
+  .retro-button-alt:hover {
+    transform: translate(-3px, -3px);
+    box-shadow: 8px 8px 0 0 var(--retro-black);
+    filter: saturate(1.08);
+  }
+
+  .retro-button-alt:active {
+    transform: translate(1px, 1px);
+    box-shadow: 3px 3px 0 0 var(--retro-black);
   }
 
   .section-title {
-    @apply text-3xl font-black md:text-4xl;
+    @apply max-w-4xl text-3xl font-black leading-[1.08] tracking-tight md:text-4xl lg:text-[2.65rem];
+  }
+
+  .title-pop {
+    color: var(--retro-black);
+    text-shadow:
+      3px 3px 0 color-mix(in srgb, var(--brand-accent) 88%, transparent),
+      6px 6px 0 color-mix(in srgb, var(--brand-primary) 55%, transparent);
   }
 
   .section-description {
-    @apply text-base md:text-lg;
+    @apply text-base font-medium leading-relaxed md:text-lg;
+    color: color-mix(in srgb, var(--retro-black) 78%, transparent);
   }
 
   .badge {
-    @apply inline-block rounded-full border-4 border-black px-4 py-2 text-sm font-black uppercase tracking-wide;
+    @apply inline-block rounded-full border-2 border-[var(--retro-black)] px-4 py-2 text-xs font-black uppercase tracking-widest text-[var(--retro-black)] md:text-sm;
     background: var(--brand-primary);
+    box-shadow: 4px 4px 0 0 var(--retro-black);
+  }
+
+  .badge-tilt {
+    transform: rotate(-2.5deg);
+    animation: badge-wiggle 7s ease-in-out infinite;
+  }
+
+  @keyframes badge-wiggle {
+    0%,
+    100% {
+      transform: rotate(-2.5deg);
+    }
+    50% {
+      transform: rotate(1.5deg);
+    }
+  }
+
+  /* Hero image — sticker / polaroid */
+  .hero-photo-frame {
+    @apply relative overflow-hidden rounded-2xl border-[3px] border-[var(--retro-black)];
+    box-shadow:
+      10px 10px 0 0 var(--brand-accent),
+      16px 16px 0 0 color-mix(in srgb, var(--brand-primary) 75%, var(--retro-black));
+  }
+
+  .hero-photo-frame::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    pointer-events: none;
+    border-radius: inherit;
+    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.35);
+    background: linear-gradient(
+      145deg,
+      color-mix(in srgb, var(--brand-primary) 15%, transparent) 0%,
+      transparent 45%
+    );
+  }
+
+  /* Why us — ticket cards */
+  .retro-ticket {
+    @apply flex gap-3 rounded-xl border-2 border-dashed border-[var(--retro-black)] bg-white/85 p-4;
+    box-shadow: 4px 4px 0 0 color-mix(in srgb, var(--brand-accent) 70%, var(--retro-black));
+  }
+
+  /* Polaroid factory */
+  .retro-polaroid {
+    @apply overflow-hidden rounded-xl border-[3px] border-[var(--retro-black)] bg-white;
+    box-shadow: 6px 6px 0 0 var(--retro-black);
+  }
+
+  .retro-polaroid-caption {
+    @apply border-t-2 border-[var(--retro-black)] px-3 py-2 text-center text-[10px] font-black uppercase tracking-[0.2em];
+    background: linear-gradient(
+      180deg,
+      var(--brand-secondary) 0%,
+      color-mix(in srgb, var(--brand-accent) 25%, var(--brand-secondary)) 100%
+    );
+  }
+
+  /* Contact panel */
+  .retro-contact-panel {
+    @apply space-y-4 rounded-xl border-[3px] border-[var(--retro-black)] p-6;
+    background: linear-gradient(
+      135deg,
+      #ffffff 0%,
+      color-mix(in srgb, var(--brand-secondary) 55%, white) 100%
+    );
+    box-shadow: 6px 6px 0 0 var(--brand-primary);
+  }
+
+  details summary::-webkit-details-marker {
+    display: none;
   }
 }

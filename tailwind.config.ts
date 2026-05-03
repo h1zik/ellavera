@@ -11,6 +11,14 @@ const config: Config = {
       colors: {
         background: "var(--background)",
         foreground: "var(--foreground)",
+        brand: {
+          primary: "var(--brand-primary)",
+          secondary: "var(--brand-secondary)",
+          accent: "var(--brand-accent)",
+        },
+      },
+      boxShadow: {
+        retro: "6px 6px 0 0 var(--retro-black)",
       },
     },
   },

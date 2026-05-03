@@ -80,8 +80,8 @@ export function LeadForm() {
         onChange={(e) => setState((prev) => ({ ...prev, phone: e.target.value }))}
       />
       <textarea
-        className="retro-input min-h-[120px]"
-        placeholder="Ceritakan idemu"
+        className="retro-input min-h-[100px]"
+        placeholder="Ide singkat"
         value={state.message}
         onChange={(e) => setState((prev) => ({ ...prev, message: e.target.value }))}
         required

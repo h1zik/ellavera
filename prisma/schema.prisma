@@ -14,8 +14,11 @@ datasource db {
 
 enum SectionType {
   HERO
-  PROCESS
   SERVICES
+  PROCESS
+  WHY_US
+  CLIENT_PORTFOLIO
+  FACTORY_GALLERY
   TESTIMONIALS
   EDUCATIONAL
   FAQ
@@ -65,17 +68,23 @@ model Content {
 model SiteSettings {
   id               String   @id @default("default")
   siteName         String   @default("Ellavera")
-  tagline          String   @default("Maklon Kosmetik Anti Ribet untuk Brand Owner Gen-Z")
+  tagline          String   @default("Maklon kosmetik buat Gen-Z & brand owner — without the drama.")
   brandPurpose     String   @db.Text
   primaryColor     String   @default("#26CCC2")
   secondaryColor   String   @default("#FAE3C7")
   accentColor      String   @default("#FFB76C")
   contactEmail     String?
   contactWhatsapp  String?
+  /** Alamat kantor / pabrik untuk section kontak */
+  locationAddress  String?  @db.Text
+  /** Tautan Google Maps atau embed link */
+  mapsUrl          String?
   seoTitle         String?
   seoDescription   String?  @db.Text
   seoKeywords      String?
-  heroImageUrl     String?
+  heroImageUrl       String?
+  /** JSON array: [{ "imageUrl": "https://...", "name": "...", "role": "..." }] */
+  talentGalleryJson  String?  @db.Text
   updatedAt        DateTime @updatedAt
 }
 

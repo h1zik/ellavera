@@ -1,0 +1,61 @@
+import { randomUUID } from "crypto";
+import { mkdir, writeFile } from "fs/promises";
+import path from "path";
+import { NextResponse } from "next/server";
+
+const MAX_BYTES = 8 * 1024 * 1024;
+const ALLOWED_TYPES = new Set(["image/jpeg", "image/png", "image/webp", "image/gif"]);
+
+function safeExt(mime: string, filename: string): string {
+  const fromName = path.extname(filename).toLowerCase();
+  if ([".jpg", ".jpeg", ".png", ".webp", ".gif"].includes(fromName)) {
+    return fromName === ".jpeg" ? ".jpg" : fromName;
+  }
+  switch (mime) {
+    case "image/jpeg":
+      return ".jpg";
+    case "image/png":
+      return ".png";
+    case "image/webp":
+      return ".webp";
+    case "image/gif":
+      return ".gif";
+    default:
+      return ".jpg";
+  }
+}
+
+export async function POST(request: Request) {
+  try {
+    const formData = await request.formData();
+    const file = formData.get("file");
+
+    if (!(file instanceof File)) {
+      return NextResponse.json({ error: "Tidak ada file." }, { status: 400 });
+    }
+
+    if (!ALLOWED_TYPES.has(file.type)) {
+      return NextResponse.json(
+        { error: "Format tidak didukung. Gunakan JPG, PNG, WebP, atau GIF." },
+        { status: 400 },
+      );
+    }
+
+    if (file.size > MAX_BYTES) {
+      return NextResponse.json({ error: "File terlalu besar (maks. 8 MB)." }, { status: 400 });
+    }
+
+    const ext = safeExt(file.type, file.name);
+    const filename = `${randomUUID()}${ext}`;
+    const uploadDir = path.join(process.cwd(), "public", "uploads");
+    await mkdir(uploadDir, { recursive: true });
+
+    const buffer = Buffer.from(await file.arrayBuffer());
+    await writeFile(path.join(uploadDir, filename), buffer);
+
+    const url = `/uploads/${filename}`;
+    return NextResponse.json({ url });
+  } catch {
+    return NextResponse.json({ error: "Upload gagal." }, { status: 500 });
+  }
+}

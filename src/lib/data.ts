@@ -1,6 +1,7 @@
 import { Prisma, SectionType } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
-import { defaultSections, defaultSettings } from "@/lib/default-data";
+import { defaultSettings } from "@/lib/default-data";
+import { syncDefaultSectionsFromDefaults } from "@/lib/sync-default-sections";
 import { LandingData } from "@/lib/types";
 
 export async function ensureSeedData() {
@@ -12,31 +13,7 @@ export async function ensureSeedData() {
     await prisma.siteSettings.create({ data: defaultSettings });
   }
 
-  const sectionCount = await prisma.section.count();
-  if (sectionCount === 0) {
-    for (const section of defaultSections) {
-      await prisma.section.create({
-        data: {
-          slug: section.slug,
-          name: section.name,
-          type: section.type,
-          order: section.order,
-          enabled: section.enabled ?? true,
-          title: section.title,
-          subtitle: section.subtitle,
-          description: section.description,
-          contents: {
-            create: section.contents.map((item) => ({
-              key: item.key,
-              value: item.value,
-              valueType: item.valueType ?? "TEXT",
-              sortOrder: item.sortOrder ?? 0,
-            })),
-          },
-        },
-      });
-    }
-  }
+  await syncDefaultSectionsFromDefaults();
 }
 
 export async function getLandingData(): Promise<LandingData> {

@@ -15,8 +15,8 @@ export default async function AdminPage() {
     <main className="min-h-screen space-y-6 bg-[var(--brand-secondary)] p-4 md:p-8">
       <header className="retro-card mx-auto w-full max-w-6xl">
         <h1 className="text-4xl font-black">Ellavera CMS Dashboard</h1>
-        <p className="mt-2">
-          Manage landing page copy, colors, section order, and incoming leads.
+        <p className="mt-2 text-black/75">
+          Atur teks, warna, gambar, urutan section, dan leads — semua lewat form, tanpa kode.
         </p>
       </header>
       <div className="mx-auto w-full max-w-6xl">

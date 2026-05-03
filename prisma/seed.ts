@@ -1,5 +1,6 @@
 import { PrismaClient } from "@prisma/client";
-import { defaultSections, defaultSettings } from "../src/lib/default-data";
+import { syncDefaultSectionsFromDefaults } from "../src/lib/sync-default-sections";
+import { defaultSettings } from "../src/lib/default-data";
 
 const prisma = new PrismaClient();
 
@@ -10,31 +11,7 @@ async function main() {
     create: defaultSettings,
   });
 
-  const count = await prisma.section.count();
-  if (count === 0) {
-    for (const section of defaultSections) {
-      await prisma.section.create({
-        data: {
-          slug: section.slug,
-          name: section.name,
-          type: section.type,
-          order: section.order,
-          enabled: section.enabled ?? true,
-          title: section.title,
-          subtitle: section.subtitle,
-          description: section.description,
-          contents: {
-            create: section.contents.map((item) => ({
-              key: item.key,
-              value: item.value,
-              valueType: item.valueType ?? "TEXT",
-              sortOrder: item.sortOrder ?? 0,
-            })),
-          },
-        },
-      });
-    }
-  }
+  await syncDefaultSectionsFromDefaults({ force: true });
 }
 
 main()

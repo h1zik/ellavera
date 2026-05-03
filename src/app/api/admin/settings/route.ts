@@ -2,36 +2,98 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { updateSiteSettings } from "@/lib/data";
 
+/** Browser / Prisma sering kirim `null`; koersi ke string untuk Zod. */
+const str = z.union([z.string(), z.null(), z.undefined()]).transform((v) => (v == null ? "" : String(v)));
+
+function isValidHeroOrAssetUrl(s: string): boolean {
+  if (s === "") {
+    return true;
+  }
+  if (s.startsWith("/") && !s.startsWith("//")) {
+    return true;
+  }
+  try {
+    new URL(s);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function isValidMapsOrEmpty(s: string): boolean {
+  if (s === "") {
+    return true;
+  }
+  try {
+    new URL(s);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 const settingsSchema = z.object({
-  siteName: z.string().min(2),
-  tagline: z.string().min(2),
-  brandPurpose: z.string().min(5),
-  primaryColor: z.string().regex(/^#([A-Fa-f0-9]{6})$/),
-  secondaryColor: z.string().regex(/^#([A-Fa-f0-9]{6})$/),
-  accentColor: z.string().regex(/^#([A-Fa-f0-9]{6})$/),
-  contactEmail: z.string().email().or(z.literal("")),
-  contactWhatsapp: z.string().optional().default(""),
-  seoTitle: z.string().optional().default(""),
-  seoDescription: z.string().optional().default(""),
-  seoKeywords: z.string().optional().default(""),
-  heroImageUrl: z.string().url().or(z.literal("")),
+  siteName: str.pipe(z.string().min(2)),
+  tagline: str.pipe(z.string().min(2)),
+  brandPurpose: str.pipe(z.string().min(2)),
+  primaryColor: str.pipe(z.string().regex(/^#([A-Fa-f0-9]{6})$/)),
+  secondaryColor: str.pipe(z.string().regex(/^#([A-Fa-f0-9]{6})$/)),
+  accentColor: str.pipe(z.string().regex(/^#([A-Fa-f0-9]{6})$/)),
+  contactEmail: str.pipe(z.string().email().or(z.literal(""))),
+  contactWhatsapp: str,
+  seoTitle: str,
+  seoDescription: str,
+  seoKeywords: str,
+  heroImageUrl: str.refine(isValidHeroOrAssetUrl, {
+    message: "heroImageUrl: kosong, URL https://…, atau path /uploads/…",
+  }),
+  talentGalleryJson: str,
+  locationAddress: str,
+  mapsUrl: str.refine(isValidMapsOrEmpty, {
+    message: "mapsUrl: kosong atau URL lengkap (https://…)",
+  }),
 });
 
 export async function PUT(request: Request) {
   try {
-    const payload = settingsSchema.parse(await request.json());
+    const json = (await request.json()) as unknown;
+    const parsed = settingsSchema.safeParse(json);
+
+    if (!parsed.success) {
+      const flat = parsed.error.flatten();
+      return NextResponse.json(
+        {
+          error: "Validasi gagal",
+          fieldErrors: flat.fieldErrors,
+          formErrors: flat.formErrors,
+        },
+        { status: 400 },
+      );
+    }
+
+    const payload = parsed.data;
+
     const updated = await updateSiteSettings({
-      ...payload,
+      siteName: payload.siteName,
+      tagline: payload.tagline,
+      brandPurpose: payload.brandPurpose,
+      primaryColor: payload.primaryColor,
+      secondaryColor: payload.secondaryColor,
+      accentColor: payload.accentColor,
       contactEmail: payload.contactEmail || null,
-      contactWhatsapp: payload.contactWhatsapp || null,
-      seoTitle: payload.seoTitle || null,
-      seoDescription: payload.seoDescription || null,
-      seoKeywords: payload.seoKeywords || null,
-      heroImageUrl: payload.heroImageUrl || null,
+      contactWhatsapp: payload.contactWhatsapp.trim() || null,
+      seoTitle: payload.seoTitle.trim() || null,
+      seoDescription: payload.seoDescription.trim() || null,
+      seoKeywords: payload.seoKeywords.trim() || null,
+      heroImageUrl: payload.heroImageUrl.trim() || null,
+      talentGalleryJson: payload.talentGalleryJson.trim() || null,
+      locationAddress: payload.locationAddress.trim() || null,
+      mapsUrl: payload.mapsUrl.trim() || null,
     });
 
     return NextResponse.json(updated);
-  } catch {
-    return NextResponse.json({ error: "Invalid input" }, { status: 400 });
+  } catch (e) {
+    console.error("[settings PUT]", e);
+    return NextResponse.json({ error: "Server error" }, { status: 500 });
   }
 }

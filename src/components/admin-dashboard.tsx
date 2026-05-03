@@ -2,7 +2,7 @@
 
 import { Content, Lead, Section, SectionType, SiteSettings } from "@prisma/client";
 import { useRouter } from "next/navigation";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { ImageUploadField } from "@/components/admin/image-upload-field";
 import { ContentBlockEditor } from "@/components/admin/content-block-editor";
 import { TalentGalleryEditor } from "@/components/admin/talent-gallery-editor";
@@ -28,6 +28,16 @@ const SECTION_TYPE_OPTIONS: SectionType[] = [
   SectionType.FAQ,
   SectionType.CONTACT,
 ];
+
+/** Maps tanpa skema → https://… agar lolos validasi API. */
+function normalizeHttpsUrl(raw: string): string {
+  const t = raw.trim();
+  if (!t) return "";
+  if (/^https?:\/\//i.test(t)) return t;
+  return `https://${t}`;
+}
+
+type ToastState = { message: string; variant: "success" | "error" } | null;
 
 function judulTipeSection(t: SectionType): string {
   const map: Record<SectionType, string> = {
@@ -68,7 +78,17 @@ export function AdminDashboard({ initialSettings, initialSections, leads }: Prop
   const router = useRouter();
   const [settings, setSettings] = useState(initialSettings);
   const [sections, setSections] = useState(initialSections);
-  const [message, setMessage] = useState("");
+  const [toast, setToast] = useState<ToastState>(null);
+
+  useEffect(() => {
+    if (!toast) return;
+    const id = window.setTimeout(() => setToast(null), 5500);
+    return () => window.clearTimeout(id);
+  }, [toast]);
+
+  function pushToast(message: string, variant: "success" | "error" = "success") {
+    setToast({ message, variant });
+  }
   const [showCreate, setShowCreate] = useState(false);
   const [creating, setCreating] = useState(false);
   const [createForm, setCreateForm] = useState<{
@@ -108,14 +128,14 @@ export function AdminDashboard({ initialSettings, initialSections, leads }: Prop
       secondaryColor: settings.secondaryColor,
       accentColor: settings.accentColor,
       contactEmail: settings.contactEmail ?? "",
-      contactWhatsapp: settings.contactWhatsapp ?? "",
+      contactWhatsapp: (settings.contactWhatsapp ?? "").trim(),
       seoTitle: settings.seoTitle ?? "",
       seoDescription: settings.seoDescription ?? "",
       seoKeywords: settings.seoKeywords ?? "",
       heroImageUrl: settings.heroImageUrl ?? "",
       talentGalleryJson: settings.talentGalleryJson ?? "",
       locationAddress: settings.locationAddress ?? "",
-      mapsUrl: settings.mapsUrl ?? "",
+      mapsUrl: normalizeHttpsUrl(settings.mapsUrl ?? ""),
     };
 
     const response = await fetch("/api/admin/settings", {
@@ -131,7 +151,7 @@ export function AdminDashboard({ initialSettings, initialSections, leads }: Prop
       } catch {
         /* ignore parse */
       }
-      setMessage("Pengaturan disimpan.");
+      pushToast("Pengaturan berhasil disimpan.", "success");
       router.refresh();
       return;
     }
@@ -155,7 +175,7 @@ export function AdminDashboard({ initialSettings, initialSections, leads }: Prop
     } catch {
       /* ignore */
     }
-    setMessage(detail);
+    pushToast(detail, "error");
   }
 
   async function saveSections() {
@@ -177,9 +197,11 @@ export function AdminDashboard({ initialSettings, initialSections, leads }: Prop
         })),
       }),
     });
-    setMessage(response.ok ? "Section disimpan." : "Gagal menyimpan section.");
     if (response.ok) {
+      pushToast("Semua section berhasil disimpan.", "success");
       router.refresh();
+    } else {
+      pushToast("Gagal menyimpan section. Cek data lalu coba lagi.", "error");
     }
   }
 
@@ -201,11 +223,11 @@ export function AdminDashboard({ initialSettings, initialSections, leads }: Prop
       });
       const data = await res.json();
       if (!res.ok) {
-        setMessage(data?.error || "Gagal membuat section.");
+        pushToast(data?.error || "Gagal membuat section.", "error");
         return;
       }
       setSections((prev) => [...prev, data as SectionWithContents]);
-      setMessage("Section baru dibuat — lanjut edit & simpan.");
+      pushToast("Section baru dibuat. Lanjut edit lalu simpan section.", "success");
       setShowCreate(false);
       setCreateForm({
         name: "",
@@ -232,10 +254,10 @@ export function AdminDashboard({ initialSettings, initialSections, leads }: Prop
     });
     if (res.ok) {
       setSections((prev) => prev.filter((s) => s.id !== id));
-      setMessage("Section dihapus.");
+      pushToast("Section berhasil dihapus.", "success");
       router.refresh();
     } else {
-      setMessage("Gagal menghapus section.");
+      pushToast("Gagal menghapus section.", "error");
     }
   }
 
@@ -284,6 +306,28 @@ export function AdminDashboard({ initialSettings, initialSections, leads }: Prop
 
   return (
     <div className="space-y-8">
+      {toast ? (
+        <div
+          role="alert"
+          className={[
+            "fixed left-1/2 top-4 z-[200] flex w-[min(92vw,28rem)] -translate-x-1/2 items-start gap-3 rounded-2xl border-2 px-4 py-3 shadow-[0_12px_40px_rgba(0,0,0,0.18)]",
+            toast.variant === "success"
+              ? "border-[#26CCC2] bg-[#FAE3C7] text-black"
+              : "border-red-600 bg-white text-red-900",
+          ].join(" ")}
+        >
+          <p className="flex-1 text-sm font-black leading-snug">{toast.message}</p>
+          <button
+            type="button"
+            className="shrink-0 rounded-lg border-2 border-black/20 bg-white/80 px-2 py-0.5 text-xs font-black hover:bg-white"
+            onClick={() => setToast(null)}
+            aria-label="Tutup pemberitahuan"
+          >
+            OK
+          </button>
+        </div>
+      ) : null}
+
       <section className="retro-card">
         <h2 className="section-title">Pengaturan situs</h2>
         <div className="mt-4 grid gap-3 md:grid-cols-2">
@@ -356,14 +400,22 @@ export function AdminDashboard({ initialSettings, initialSections, leads }: Prop
             onChange={(e) => setSettings((prev) => ({ ...prev, contactEmail: e.target.value }))}
             placeholder="Email kontak"
           />
-          <input
-            className="retro-input"
-            value={settings.contactWhatsapp ?? ""}
-            onChange={(e) =>
-              setSettings((prev) => ({ ...prev, contactWhatsapp: e.target.value }))
-            }
-            placeholder="WhatsApp"
-          />
+          <label className="font-bold md:col-span-1">
+            Nomor WhatsApp (tampil di halaman kontak)
+            <input
+              className="retro-input mt-1 font-normal"
+              value={settings.contactWhatsapp ?? ""}
+              onChange={(e) =>
+                setSettings((prev) => ({ ...prev, contactWhatsapp: e.target.value }))
+              }
+              placeholder="+6281234567890 atau 081234567890"
+              inputMode="tel"
+              autoComplete="tel"
+            />
+            <span className="mt-1 block text-xs font-semibold text-black/55">
+              Boleh pakai +62, 08…, atau spasi; link wa.me dibuat otomatis.
+            </span>
+          </label>
           <textarea
             className="retro-input md:col-span-2 min-h-[88px]"
             value={settings.locationAddress ?? ""}
@@ -372,14 +424,21 @@ export function AdminDashboard({ initialSettings, initialSections, leads }: Prop
             }
             placeholder="Alamat (Contact)"
           />
-          <input
-            className="retro-input md:col-span-2"
-            value={settings.mapsUrl ?? ""}
-            onChange={(e) =>
-              setSettings((prev) => ({ ...prev, mapsUrl: e.target.value || null }))
-            }
-            placeholder="URL Google Maps"
-          />
+          <label className="font-bold md:col-span-2">
+            Link Google Maps (tombol di section kontak)
+            <input
+              className="retro-input mt-1 font-normal"
+              value={settings.mapsUrl ?? ""}
+              onChange={(e) =>
+                setSettings((prev) => ({ ...prev, mapsUrl: e.target.value || null }))
+              }
+              placeholder="https://maps.google.com/... atau maps.app.goo.gl/..."
+              inputMode="url"
+            />
+            <span className="mt-1 block text-xs font-semibold text-black/55">
+              Tempel URL lengkap; kalau tanpa https:// akan ditambahkan otomatis saat simpan.
+            </span>
+          </label>
           <input
             className="retro-input md:col-span-2"
             value={settings.seoTitle ?? ""}
@@ -671,9 +730,6 @@ export function AdminDashboard({ initialSettings, initialSections, leads }: Prop
         </div>
       </section>
 
-      {message ? (
-        <p className="rounded-lg border-2 border-black/15 bg-white px-4 py-2 font-bold">{message}</p>
-      ) : null}
     </div>
   );
 }

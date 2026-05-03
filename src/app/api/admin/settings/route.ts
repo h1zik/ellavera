@@ -37,6 +37,13 @@ function isValidMapsOrEmpty(s: string): boolean {
   }
 }
 
+function normalizeHttpsUrl(raw: string): string {
+  const t = raw.trim();
+  if (!t) return "";
+  if (/^https?:\/\//i.test(t)) return t;
+  return `https://${t}`;
+}
+
 const settingsSchema = z.object({
   siteName: str.pipe(z.string().min(2)),
   tagline: str.pipe(z.string().min(2)),
@@ -54,9 +61,11 @@ const settingsSchema = z.object({
   }),
   talentGalleryJson: str,
   locationAddress: str,
-  mapsUrl: str.refine(isValidMapsOrEmpty, {
-    message: "mapsUrl: kosong atau URL lengkap (https://…)",
-  }),
+  mapsUrl: str
+    .transform((s) => normalizeHttpsUrl(String(s)))
+    .refine(isValidMapsOrEmpty, {
+      message: "mapsUrl: kosong atau URL valid (contoh https://maps.google.com/…)",
+    }),
 });
 
 export async function PUT(request: Request) {

@@ -19,13 +19,12 @@ export type AdminPageData = {
 };
 
 export async function ensureSeedData() {
-  const settings = await prisma.siteSettings.findUnique({
+  // upsert: hindari P2002 saat dua jalur paralel (mis. cache landing + admin di build) sama-sama "seed".
+  await prisma.siteSettings.upsert({
     where: { id: "default" },
+    create: defaultSettings,
+    update: {},
   });
-
-  if (!settings) {
-    await prisma.siteSettings.create({ data: defaultSettings });
-  }
 
   await syncDefaultSectionsFromDefaults();
 }

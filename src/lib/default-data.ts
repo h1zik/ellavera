@@ -50,10 +50,10 @@ export const defaultSections: SectionSeed[] = [
     subtitle: "Ellavera Beauty · Gen-Z friendly",
     description: "Maklon kosmetik dengan vibe retro & proses yang jelas. Unisex. Buat brand owner yang mau gerak cepat.",
     contents: [
-      { key: "cta_primary_label", value: "Mulai konsultasi" },
-      { key: "cta_primary_url", value: "#contact", valueType: ContentValueType.URL },
-      { key: "cta_secondary_label", value: "Lihat layanan" },
-      { key: "cta_secondary_url", value: "#services", valueType: ContentValueType.URL },
+      { key: "cta_primary_label", value: "Mulai konsultasi", sortOrder: 0 },
+      { key: "cta_primary_url", value: "#contact", valueType: ContentValueType.URL, sortOrder: 1 },
+      { key: "cta_secondary_label", value: "Lihat layanan", sortOrder: 2 },
+      { key: "cta_secondary_url", value: "#services", valueType: ContentValueType.URL, sortOrder: 3 },
     ],
   },
   {

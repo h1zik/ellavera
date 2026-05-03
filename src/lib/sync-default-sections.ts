@@ -5,12 +5,16 @@ import { defaultSections } from "@/lib/default-data";
 /** Section lama yang diganti di layout baru — dihapus saat sinkronisasi. */
 const OBSOLETE_SLUGS = ["testimonials", "educational"] as const;
 
-/**
- * Menyelaraskan section & konten dengan `default-data.ts`.
- * Tanpa `force`: hanya jalan jika DB kosong, ada slug baru yang belum ada, atau masih ada section lawas.
- * Dengan `force: true`: selalu upsert semua default (dipakai `db:seed` / `db:sync-sections`).
- */
-export async function syncDefaultSectionsFromDefaults(options?: {
+/** Serialize sync — prerender paralel (`/`, `/admin`, …) memicu race tanpa antrian. */
+let syncTail: Promise<unknown> = Promise.resolve();
+
+function enqueueSync<T>(fn: () => Promise<T>): Promise<T> {
+  const run = syncTail.then(() => fn());
+  syncTail = run.catch(() => undefined);
+  return run;
+}
+
+async function performSyncDefaultSectionsFromDefaults(options?: {
   force?: boolean;
 }): Promise<boolean> {
   const force = options?.force === true;
@@ -63,17 +67,30 @@ export async function syncDefaultSectionsFromDefaults(options?: {
 
     await prisma.content.deleteMany({ where: { sectionId: row.id } });
     if (section.contents.length > 0) {
+      const data = section.contents.map((item) => ({
+        sectionId: row.id,
+        key: item.key,
+        value: item.value,
+        valueType: item.valueType ?? ContentValueType.TEXT,
+        sortOrder: item.sortOrder ?? 0,
+      }));
       await prisma.content.createMany({
-        data: section.contents.map((item) => ({
-          sectionId: row.id,
-          key: item.key,
-          value: item.value,
-          valueType: item.valueType ?? ContentValueType.TEXT,
-          sortOrder: item.sortOrder ?? 0,
-        })),
+        data,
+        skipDuplicates: true,
       });
     }
   }
 
   return true;
+}
+
+/**
+ * Menyelaraskan section & konten dengan `default-data.ts`.
+ * Tanpa `force`: hanya jalan jika DB kosong, ada slug baru yang belum ada, atau masih ada section lawas.
+ * Dengan `force: true`: selalu upsert semua default (dipakai `db:seed` / `db:sync-sections`).
+ */
+export function syncDefaultSectionsFromDefaults(options?: {
+  force?: boolean;
+}): Promise<boolean> {
+  return enqueueSync(() => performSyncDefaultSectionsFromDefaults(options));
 }

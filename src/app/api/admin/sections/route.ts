@@ -95,6 +95,7 @@ export async function PUT(request: Request) {
             valueType: content.valueType,
             sortOrder: content.sortOrder,
           })),
+          skipDuplicates: true,
         });
       }
     }

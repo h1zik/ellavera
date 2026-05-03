@@ -9,6 +9,10 @@ export default defineConfig({
     path: "prisma/migrations",
   },
   datasource: {
-    url: process.env["DATABASE_URL"] ?? "",
+    // Netlify / Supabase often expose SUPABASE_DATABASE_URL; local dev uses DATABASE_URL in .env
+    url:
+      process.env["DATABASE_URL"]?.trim() ||
+      process.env["SUPABASE_DATABASE_URL"]?.trim() ||
+      "",
   },
 });

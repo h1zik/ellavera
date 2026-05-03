@@ -48,18 +48,20 @@ export function getAdminSessionSecretEdge(): string {
 }
 
 export async function verifyAdminSessionTokenEdge(token: string | undefined): Promise<boolean> {
-  if (!token?.includes(".")) return false;
-  const lastDot = token.lastIndexOf(".");
-  const payload = token.slice(0, lastDot);
-  const sig = token.slice(lastDot + 1);
-  const secret = getAdminSessionSecretEdge();
-  const expected = await hmacSha256Base64Url(secret, payload);
-  if (!timingSafeEqualStr(sig, expected)) return false;
   try {
+    if (!token?.includes(".")) return false;
+    const lastDot = token.lastIndexOf(".");
+    const payload = token.slice(0, lastDot);
+    const sig = token.slice(lastDot + 1);
+    const secret = getAdminSessionSecretEdge();
+    if (!secret) return false;
+    const expected = await hmacSha256Base64Url(secret, payload);
+    if (!timingSafeEqualStr(sig, expected)) return false;
     const json = new TextDecoder().decode(base64UrlToUint8Array(payload));
     const { exp } = JSON.parse(json) as { exp?: unknown };
     return typeof exp === "number" && Math.floor(Date.now() / 1000) < exp;
   } catch {
+    /* Cookie korup / base64 invalid → anggap belum login; jangan biarkan middleware throw (bisa 503). */
     return false;
   }
 }

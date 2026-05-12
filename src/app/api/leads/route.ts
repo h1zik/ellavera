@@ -1,28 +1,41 @@
 import { revalidatePath, revalidateTag } from "next/cache";
 import { NextResponse } from "next/server";
-import { z } from "zod";
 import { ADMIN_PAGE_CACHE_TAG } from "@/lib/data";
+import {
+  buildLeadSubmissionSchema,
+  deriveLegacyLeadColumns,
+  parseLeadFormFieldsJson,
+} from "@/lib/lead-form-config";
 import { prisma } from "@/lib/prisma";
-
-const leadSchema = z.object({
-  fullName: z.string().min(2),
-  brandName: z.string().optional().default(""),
-  email: z.string().email(),
-  phone: z.string().optional().default(""),
-  message: z.string().min(8),
-});
 
 export async function POST(request: Request) {
   try {
-    const payload = leadSchema.parse(await request.json());
+    const settings = await prisma.siteSettings.findUnique({
+      where: { id: "default" },
+      select: { leadFormFieldsJson: true },
+    });
+
+    const fields = parseLeadFormFieldsJson(settings?.leadFormFieldsJson);
+    const schema = buildLeadSubmissionSchema(fields);
+
+    const raw = (await request.json()) as Record<string, unknown>;
+    const strOnly: Record<string, string> = {};
+    for (const f of fields) {
+      const v = raw[f.id];
+      strOnly[f.id] = v == null ? "" : String(v);
+    }
+
+    const data = schema.parse(strOnly);
+    const legacy = deriveLegacyLeadColumns(fields, data);
 
     const lead = await prisma.lead.create({
       data: {
-        fullName: payload.fullName,
-        brandName: payload.brandName || null,
-        email: payload.email,
-        phone: payload.phone || null,
-        message: payload.message,
+        fullName: legacy.fullName,
+        brandName: legacy.brandName,
+        email: legacy.email,
+        phone: legacy.phone,
+        message: legacy.message,
+        responsesJson: JSON.stringify(data),
       },
     });
 

@@ -3,6 +3,7 @@ import { Prisma, SectionType } from "@prisma/client";
 import { unstable_cache } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { defaultSettings } from "@/lib/default-data";
+import { DEFAULT_LEAD_FORM_FIELDS_JSON } from "@/lib/lead-form-config";
 import { syncDefaultSectionsFromDefaults } from "@/lib/sync-default-sections";
 import { LandingData } from "@/lib/types";
 
@@ -27,6 +28,17 @@ export async function ensureSeedData() {
   });
 
   await syncDefaultSectionsFromDefaults();
+
+  const settingsRow = await prisma.siteSettings.findUnique({
+    where: { id: "default" },
+    select: { leadFormFieldsJson: true },
+  });
+  if (settingsRow && !settingsRow.leadFormFieldsJson?.trim()) {
+    await prisma.siteSettings.update({
+      where: { id: "default" },
+      data: { leadFormFieldsJson: DEFAULT_LEAD_FORM_FIELDS_JSON },
+    });
+  }
 }
 
 const getLandingDataCached = unstable_cache(
@@ -68,7 +80,7 @@ const getAdminPageDataCached = unstable_cache(
     ]);
     return { settings, sections, leads };
   },
-  ["admin-page-v1"],
+  ["admin-page-v2"],
   { tags: [ADMIN_PAGE_CACHE_TAG], revalidate: 120 },
 );
 

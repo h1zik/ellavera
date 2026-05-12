@@ -1,3 +1,4 @@
+import type { CSSProperties } from "react";
 import { AdminLoginForm } from "@/components/admin/admin-login-form";
 import { ensureSeedData } from "@/lib/data";
 import { prisma } from "@/lib/prisma";
@@ -24,9 +25,18 @@ export default async function AdminLoginPage({
   const logoUrl = settings?.adminLogoUrl?.trim() || null;
   const redirectAfterLogin = safeInternalPath(searchParams.next);
 
+  const brandStyle = {
+    "--brand-primary": settings?.primaryColor ?? "#26CCC2",
+    "--brand-secondary": settings?.secondaryColor ?? "#FAE3C7",
+    "--brand-accent": settings?.accentColor ?? "#FFB76C",
+  } as CSSProperties;
+
   return (
-    <main className="flex min-h-screen flex-col items-center justify-center bg-[var(--brand-secondary)] p-4">
-      <div className="retro-card w-full max-w-md px-6 py-8 shadow-[0_20px_60px_rgba(0,0,0,0.12)]">
+    <main
+      style={brandStyle}
+      className="flex min-h-screen flex-col items-center justify-center bg-[color-mix(in_srgb,var(--brand-secondary)_72%,#faf8f3)] p-4 md:p-8"
+    >
+      <div className="admin-content-card w-full max-w-md px-6 py-8 md:px-8 md:py-10">
         <div className="text-center">
           {logoUrl ? (
             <>
@@ -38,13 +48,13 @@ export default async function AdminLoginPage({
               />
             </>
           ) : (
-            <p className="text-3xl font-black tracking-tight text-[var(--brand-primary)]">
+            <p className="text-3xl font-black tracking-tight text-[var(--retro-black)] md:text-4xl">
               {siteName}
             </p>
           )}
-          <p className="mt-2 text-sm font-bold text-black/65">Panel admin</p>
+          <p className="admin-eyebrow mx-auto mt-4 justify-center text-[10px]">Masuk</p>
           {tagline ? (
-            <p className="mt-1 text-xs font-semibold leading-snug text-black/50">{tagline}</p>
+            <p className="mt-3 text-sm font-semibold leading-snug text-black/55">{tagline}</p>
           ) : null}
         </div>
         <AdminLoginForm redirectAfterLogin={redirectAfterLogin} />

@@ -1,29 +1,30 @@
 "use client";
 
-import { FormEvent, useState } from "react";
+import { FormEvent, useEffect, useMemo, useState } from "react";
+import type { LeadFormField } from "@/lib/lead-form-config";
 
-type FormState = {
-  fullName: string;
-  brandName: string;
-  email: string;
-  phone: string;
-  message: string;
+function emptyState(fields: LeadFormField[]): Record<string, string> {
+  return Object.fromEntries(fields.map((f) => [f.id, ""]));
+}
+
+type Props = {
+  fields: LeadFormField[];
 };
 
-const initialState: FormState = {
-  fullName: "",
-  brandName: "",
-  email: "",
-  phone: "",
-  message: "",
-};
-
-export function LeadForm() {
-  const [state, setState] = useState<FormState>(initialState);
-  const [status, setStatus] = useState<"idle" | "loading" | "success" | "error">(
-    "idle",
-  );
+export function LeadForm({ fields }: Props) {
+  /** Hanya urutan + id field; jangan pakai `fields` di deps effect — parent mengirim array baru tiap render RSC sehingga effect akan reset form dan cabut fokus. */
+  const fieldsKey = useMemo(() => fields.map((f) => f.id).join("|"), [fields]);
+  const [state, setState] = useState<Record<string, string>>(() => emptyState(fields));
+  const [status, setStatus] = useState<"idle" | "loading" | "success" | "error">("idle");
   const [feedback, setFeedback] = useState("");
+
+  useEffect(() => {
+    setState(emptyState(fields));
+    setStatus("idle");
+    setFeedback("");
+    // Hanya reset saat struktur field (urutan/id) berubah — bukan saat referensi `fields` baru dari parent.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [fieldsKey]);
 
   async function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -41,7 +42,7 @@ export function LeadForm() {
         throw new Error("Gagal mengirim form.");
       }
 
-      setState(initialState);
+      setState(emptyState(fields));
       setStatus("success");
       setFeedback("Terima kasih. Tim Ellavera akan segera menghubungi kamu.");
     } catch {
@@ -52,48 +53,54 @@ export function LeadForm() {
 
   return (
     <form onSubmit={onSubmit} className="grid gap-3">
-      <input
-        className="retro-input"
-        placeholder="Nama lengkap"
-        value={state.fullName}
-        onChange={(e) => setState((prev) => ({ ...prev, fullName: e.target.value }))}
-        required
-      />
-      <input
-        className="retro-input"
-        placeholder="Nama brand (opsional)"
-        value={state.brandName}
-        onChange={(e) => setState((prev) => ({ ...prev, brandName: e.target.value }))}
-      />
-      <input
-        className="retro-input"
-        type="email"
-        placeholder="Email aktif"
-        value={state.email}
-        onChange={(e) => setState((prev) => ({ ...prev, email: e.target.value }))}
-        required
-      />
-      <input
-        className="retro-input"
-        placeholder="Nomor WhatsApp"
-        value={state.phone}
-        onChange={(e) => setState((prev) => ({ ...prev, phone: e.target.value }))}
-      />
-      <textarea
-        className="retro-input min-h-[100px]"
-        placeholder="Ide singkat"
-        value={state.message}
-        onChange={(e) => setState((prev) => ({ ...prev, message: e.target.value }))}
-        required
-      />
+      {fields.map((field) =>
+        field.type === "textarea" ? (
+          <textarea
+            key={field.id}
+            className="retro-input min-h-[100px]"
+            placeholder={field.placeholder || field.label}
+            value={state[field.id] ?? ""}
+            onChange={(e) =>
+              setState((prev) => ({ ...prev, [field.id]: e.target.value }))
+            }
+            required={field.required}
+            maxLength={field.maxLength}
+            minLength={field.required ? field.minLength : undefined}
+          />
+        ) : (
+          <input
+            key={field.id}
+            className="retro-input"
+            type={field.type === "email" ? "email" : field.type === "tel" ? "tel" : "text"}
+            placeholder={field.placeholder || field.label}
+            value={state[field.id] ?? ""}
+            onChange={(e) =>
+              setState((prev) => ({ ...prev, [field.id]: e.target.value }))
+            }
+            required={field.required}
+            maxLength={field.maxLength}
+            minLength={field.required ? field.minLength : undefined}
+            inputMode={field.type === "tel" ? "tel" : undefined}
+            autoComplete={
+              field.type === "email"
+                ? "email"
+                : field.id === "fullName"
+                  ? "name"
+                  : field.type === "tel"
+                    ? "tel"
+                    : "on"
+            }
+          />
+        ),
+      )}
       <button className="retro-button" disabled={status === "loading"}>
         {status === "loading" ? "Mengirim..." : "Kirim Brief"}
       </button>
-      {feedback && (
-        <p className={status === "success" ? "text-green-700" : "text-red-700"}>
-          {feedback}
-        </p>
-      )}
+      <div className="min-h-[3.25rem]" aria-live="polite">
+        {feedback ? (
+          <p className={status === "success" ? "text-green-700" : "text-red-700"}>{feedback}</p>
+        ) : null}
+      </div>
     </form>
   );
 }

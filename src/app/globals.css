@@ -276,6 +276,20 @@ body {
     color: color-mix(in srgb, var(--retro-black) 78%, transparent);
   }
 
+  /** Judul section + badge nama navigasi (anchor) */
+  .section-intro {
+    @apply mb-8 flex flex-col gap-4 border-b-2 border-dashed border-black/15 pb-8 md:mb-10 md:flex-row md:items-start md:gap-6 md:pb-10;
+  }
+
+  .section-intro-badge {
+    @apply max-w-[14rem] shrink-0 self-start overflow-hidden text-ellipsis whitespace-nowrap rounded-full border-2 border-[var(--retro-black)] bg-white px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.15em] text-black/70;
+    box-shadow: 3px 3px 0 0 var(--brand-accent);
+  }
+
+  .section-intro-body {
+    @apply min-w-0 flex-1 space-y-2;
+  }
+
   .badge {
     @apply inline-block rounded-full border-2 border-[var(--retro-black)] px-4 py-2 text-xs font-black uppercase tracking-widest text-[var(--retro-black)] md:text-sm;
     background: var(--brand-primary);
@@ -354,5 +368,192 @@ body {
 
   details summary::-webkit-details-marker {
     display: none;
+  }
+
+  /* ═══ Lead form (public) ═══ */
+  .retro-lead-panel {
+    @apply rounded-2xl border-[3px] border-[var(--retro-black)] p-6 md:p-7;
+    background: linear-gradient(
+      165deg,
+      #ffffff 0%,
+      color-mix(in srgb, var(--brand-primary) 8%, white) 100%
+    );
+    box-shadow:
+      6px 6px 0 0 color-mix(in srgb, var(--brand-accent) 85%, var(--retro-black)),
+      inset 0 1px 0 rgba(255, 255, 255, 0.9);
+  }
+
+  .retro-lead-panel h3,
+  .retro-lead-heading {
+    @apply text-sm font-black uppercase tracking-[0.18em] text-black/70;
+  }
+
+  /* ═══ Homepage — back-to-top (HomeEnhancements) ═══ */
+  .home-back-top {
+    @apply retro-focus fixed bottom-6 right-4 z-50 flex h-12 w-12 items-center justify-center rounded-full border-[3px] border-[var(--retro-black)] text-lg font-black text-[var(--retro-black)] opacity-0 transition duration-300 md:bottom-8 md:right-6;
+    background: var(--brand-accent);
+    box-shadow: 4px 4px 0 0 var(--retro-black);
+    pointer-events: none;
+    transform: translateY(12px);
+  }
+
+  .home-back-top--visible {
+    @apply pointer-events-auto opacity-100;
+    transform: translateY(0);
+  }
+
+  .home-back-top:hover {
+    filter: brightness(1.06);
+    transform: translateY(-2px);
+  }
+
+  /* ═══ Admin dashboard shell ═══ */
+  .admin-app-root {
+    min-height: 100vh;
+  }
+
+  .admin-top-header {
+    @apply relative overflow-hidden rounded-3xl border-[3px] border-[var(--retro-black)] p-6 md:p-8;
+    background: linear-gradient(
+      135deg,
+      #fffef9 0%,
+      color-mix(in srgb, var(--brand-secondary) 70%, white) 45%,
+      color-mix(in srgb, var(--brand-primary) 18%, white) 100%
+    );
+    box-shadow: 8px 8px 0 0 color-mix(in srgb, var(--brand-primary) 65%, var(--retro-black));
+  }
+
+  .admin-top-header::after {
+    content: "";
+    position: absolute;
+    right: -8%;
+    top: -50%;
+    height: 160%;
+    width: 42%;
+    border-radius: 50%;
+    background: color-mix(in srgb, var(--brand-accent) 28%, transparent);
+    pointer-events: none;
+  }
+
+  .admin-eyebrow {
+    @apply inline-flex items-center gap-2 rounded-full border-2 border-[var(--retro-black)] bg-white/90 px-3 py-1 text-[10px] font-black uppercase tracking-[0.2em] text-black/65;
+    box-shadow: 3px 3px 0 0 var(--brand-accent);
+  }
+
+  .admin-sidebar-shell {
+    @apply rounded-3xl border-[3px] border-[var(--retro-black)] bg-[color-mix(in_srgb,#fffef9_92%,var(--brand-secondary))] p-3 shadow-[6px_6px_0_0_color-mix(in_srgb,var(--brand-accent)_70%,var(--retro-black))] backdrop-blur-sm;
+  }
+
+  .admin-nav-section-label {
+    @apply px-2 pb-1.5 pt-2 text-[10px] font-black uppercase tracking-[0.18em] text-black/40;
+  }
+
+  .admin-content-card {
+    @apply relative overflow-hidden rounded-3xl border-[3px] border-[var(--retro-black)] p-6 md:p-8;
+    background: linear-gradient(
+      165deg,
+      #fffef9 0%,
+      color-mix(in srgb, var(--brand-secondary) 55%, white) 100%
+    );
+    box-shadow: 8px 8px 0 0 var(--brand-primary);
+  }
+
+  .admin-page-title {
+    @apply text-3xl font-black tracking-tight text-[var(--retro-black)] md:text-4xl;
+    text-shadow:
+      2px 2px 0 color-mix(in srgb, var(--brand-accent) 55%, transparent),
+      4px 4px 0 color-mix(in srgb, var(--brand-primary) 35%, transparent);
+  }
+
+  .admin-nav-btn {
+    @apply retro-focus w-full rounded-xl border-2 border-transparent px-3 py-2.5 text-left text-sm font-bold text-black/80 transition;
+  }
+
+  .admin-nav-btn:hover {
+    border-color: color-mix(in srgb, var(--brand-primary) 35%, transparent);
+    background: color-mix(in srgb, var(--brand-primary) 8%, transparent);
+  }
+
+  .admin-nav-btn--active {
+    border-color: var(--retro-black);
+    background: color-mix(in srgb, var(--brand-primary) 18%, white);
+    box-shadow: 3px 3px 0 0 var(--brand-primary);
+    color: var(--retro-black);
+  }
+
+  .admin-section-heading {
+    @apply border-b-2 border-dashed border-black/15 pb-3 text-2xl font-black tracking-tight text-[var(--retro-black)] md:text-3xl;
+  }
+
+  .admin-context-bar {
+    @apply mb-4 flex flex-wrap items-center gap-2 rounded-2xl border-2 border-black/10 bg-white/70 px-4 py-2.5 text-sm shadow-sm;
+  }
+
+  .admin-context-bar-label {
+    @apply text-[10px] font-black uppercase tracking-[0.2em] text-black/40;
+  }
+
+  .admin-context-bar-value {
+    @apply font-black text-[var(--retro-black)];
+  }
+
+  .admin-form-group-title {
+    @apply text-xs font-black uppercase tracking-[0.2em] text-black/45;
+  }
+
+  .admin-form-group {
+    @apply rounded-2xl border-2 border-black/10 bg-white/45 p-4 md:p-5;
+  }
+
+  .admin-sticky-actions {
+    @apply sticky bottom-0 z-20 -mx-6 mt-8 border-t-2 border-[var(--retro-black)] py-4 backdrop-blur-md md:-mx-8;
+    background: color-mix(
+      in srgb,
+      color-mix(in srgb, #fffef9 92%, var(--brand-secondary)) 95%,
+      transparent
+    );
+  }
+
+  .admin-sticky-actions-inner {
+    @apply mx-auto flex max-w-none flex-col items-stretch justify-between gap-3 px-6 sm:flex-row sm:items-center md:px-8;
+  }
+
+  .admin-toast-success {
+    @apply border-[var(--brand-primary)] bg-[color-mix(in_srgb,var(--brand-secondary)_92%,white)] text-[var(--retro-black)];
+    box-shadow: 6px 6px 0 0 var(--retro-black);
+  }
+
+  .admin-toast-error {
+    @apply border-red-700 bg-white text-red-950;
+    box-shadow: 6px 6px 0 0 rgba(185, 28, 28, 0.35);
+  }
+
+  /* Skip link */
+  .skip-to-main {
+    @apply absolute left-4 top-4 z-[300] -translate-y-20 rounded-xl border-2 border-[var(--retro-black)] bg-[var(--brand-primary)] px-4 py-2 text-sm font-black uppercase tracking-wide text-[var(--retro-black)] opacity-0 transition focus:translate-y-0 focus:opacity-100;
+    box-shadow: 4px 4px 0 0 var(--retro-black);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    html {
+      scroll-behavior: auto;
+    }
+
+    .badge-tilt {
+      animation: none !important;
+      transform: none !important;
+    }
+
+    .retro-nav-link:hover,
+    .retro-button:hover,
+    .retro-button-alt:hover,
+    .retro-item:hover,
+    .retro-item-playful:hover {
+      transform: none;
+    }
+
+    .home-back-top {
+      transition: none;
+    }
   }
 }

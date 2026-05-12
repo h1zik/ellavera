@@ -6,6 +6,10 @@ import {
   LANDING_CACHE_TAG,
   updateSiteSettings,
 } from "@/lib/data";
+import {
+  DEFAULT_LEAD_FORM_FIELDS_JSON,
+  leadFormFieldsJsonIssuesSummary,
+} from "@/lib/lead-form-config";
 
 /** Browser / Prisma sering kirim `null`; koersi ke string untuk Zod. */
 const str = z.union([z.string(), z.null(), z.undefined()]).transform((v) => (v == null ? "" : String(v)));
@@ -69,13 +73,23 @@ const settingsSchema = z.object({
     message: "siteLogoUrl: kosong, URL https://…, atau path /uploads/…",
   }),
   talentGalleryJson: str,
+  leadFormFieldsJson: str,
   locationAddress: str,
   mapsUrl: str
     .transform((s) => normalizeHttpsUrl(String(s)))
     .refine(isValidMapsOrEmpty, {
       message: "mapsUrl: kosong atau URL valid (contoh https://maps.google.com/…)",
     }),
-});
+})
+  .superRefine((data, ctx) => {
+    const summary = leadFormFieldsJsonIssuesSummary(data.leadFormFieldsJson);
+    if (!summary) return;
+    ctx.addIssue({
+      code: "custom",
+      message: `Form leads: ${summary}`,
+      path: ["leadFormFieldsJson"],
+    });
+  });
 
 export async function PUT(request: Request) {
   try {
@@ -113,6 +127,8 @@ export async function PUT(request: Request) {
       faviconUrl: payload.faviconUrl.trim() || null,
       siteLogoUrl: payload.siteLogoUrl.trim() || null,
       talentGalleryJson: payload.talentGalleryJson.trim() || null,
+      leadFormFieldsJson:
+        payload.leadFormFieldsJson.trim() || DEFAULT_LEAD_FORM_FIELDS_JSON,
       locationAddress: payload.locationAddress.trim() || null,
       mapsUrl: payload.mapsUrl.trim() || null,
     });

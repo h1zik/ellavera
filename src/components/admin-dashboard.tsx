@@ -6,7 +6,14 @@ import { useEffect, useMemo, useState } from "react";
 import { ImageUploadField } from "@/components/admin/image-upload-field";
 import { ContentBlockEditor } from "@/components/admin/content-block-editor";
 import { TalentGalleryEditor } from "@/components/admin/talent-gallery-editor";
+import { LeadFormFieldsEditor } from "@/components/admin/lead-form-fields-editor";
 import { defaultKindForSection, defaultValueForKind } from "@/lib/admin-content-kinds";
+import type { LeadFormField } from "@/lib/lead-form-config";
+import {
+  DEFAULT_LEAD_FORM_FIELDS_JSON,
+  getLeadCellValue,
+  safeParseLeadFormFieldsJson,
+} from "@/lib/lead-form-config";
 
 type SectionWithContents = Section & { contents: Content[] };
 
@@ -121,6 +128,13 @@ export function AdminDashboard({ initialSettings, initialSections, leads }: Prop
     [sections],
   );
 
+  const leadFormFieldsForTable = useMemo((): LeadFormField[] => {
+    const r = safeParseLeadFormFieldsJson(settings.leadFormFieldsJson);
+    return r.success
+      ? r.data
+      : (JSON.parse(DEFAULT_LEAD_FORM_FIELDS_JSON) as LeadFormField[]);
+  }, [settings.leadFormFieldsJson]);
+
   const maxOrder = useMemo(
     () => sortedSections.reduce((m, s) => Math.max(m, s.order), 0),
     [sortedSections],
@@ -154,6 +168,7 @@ export function AdminDashboard({ initialSettings, initialSections, leads }: Prop
       faviconUrl: settings.faviconUrl ?? "",
       siteLogoUrl: settings.siteLogoUrl ?? "",
       talentGalleryJson: settings.talentGalleryJson ?? "",
+      leadFormFieldsJson: settings.leadFormFieldsJson ?? "",
       locationAddress: settings.locationAddress ?? "",
       mapsUrl: normalizeHttpsUrl(settings.mapsUrl ?? ""),
     };
@@ -327,8 +342,8 @@ export function AdminDashboard({ initialSettings, initialSections, leads }: Prop
     );
   }
 
-  const navLinkClass =
-    "rounded-lg border-2 border-transparent px-3 py-2 text-left text-sm font-bold text-black/80 outline-none transition hover:border-black/15 hover:bg-black/[0.04] focus-visible:ring-2 focus-visible:ring-[var(--brand-primary)] focus-visible:ring-offset-2";
+  const navBtnClass = (active: boolean) =>
+    ["admin-nav-btn", active ? "admin-nav-btn--active" : ""].filter(Boolean).join(" ");
 
   const sectionNavItems = useMemo(
     () =>
@@ -341,14 +356,31 @@ export function AdminDashboard({ initialSettings, initialSections, leads }: Prop
     [sortedSections],
   );
 
-  function navBtnClass(active: boolean) {
-    return [
-      navLinkClass,
-      active
-        ? "border-[var(--brand-primary)] bg-[color-mix(in_srgb,var(--brand-primary)_12%,transparent)]"
-        : "",
-    ].join(" ");
-  }
+  const adminContext = useMemo(() => {
+    if (activeView === "settings") {
+      return {
+        title: "Pengaturan situs",
+        subtitle: "Brand, SEO, kontak, form leads",
+      };
+    }
+    if (activeView === "sections-hub") {
+      return {
+        title: "Section halaman",
+        subtitle: `${sortedSections.length} section`,
+      };
+    }
+    if (activeView === "leads") {
+      return { title: "Leads", subtitle: `${leads.length} kiriman` };
+    }
+    if (isSectionView(activeView)) {
+      const sid = activeView.slice("section:".length);
+      const s = sortedSections.find((x) => x.id === sid);
+      return s
+        ? { title: s.name, subtitle: judulTipeSection(s.type) }
+        : { title: "Section", subtitle: "" };
+    }
+    return { title: "", subtitle: "" };
+  }, [activeView, sortedSections, leads.length]);
 
   function renderSectionEditor(section: SectionWithContents) {
     return (
@@ -492,10 +524,8 @@ export function AdminDashboard({ initialSettings, initialSections, leads }: Prop
         <div
           role="alert"
           className={[
-            "fixed left-1/2 top-4 z-[200] flex w-[min(92vw,28rem)] -translate-x-1/2 items-start gap-3 rounded-2xl border-2 px-4 py-3 shadow-[0_12px_40px_rgba(0,0,0,0.18)]",
-            toast.variant === "success"
-              ? "border-[#26CCC2] bg-[#FAE3C7] text-black"
-              : "border-red-600 bg-white text-red-900",
+            "fixed left-1/2 top-4 z-[200] flex w-[min(92vw,28rem)] -translate-x-1/2 items-start gap-3 rounded-2xl border-[3px] px-4 py-3",
+            toast.variant === "success" ? "admin-toast-success" : "admin-toast-error",
           ].join(" ")}
         >
           <p className="flex-1 text-sm font-black leading-snug">{toast.message}</p>
@@ -510,14 +540,12 @@ export function AdminDashboard({ initialSettings, initialSections, leads }: Prop
         </div>
       ) : null}
 
-      <aside className="w-full shrink-0 lg:sticky lg:top-6 lg:w-56 lg:self-start">
+      <aside className="w-full shrink-0 lg:sticky lg:top-6 lg:w-[15.5rem] lg:self-start">
         <nav
-          className="retro-card flex flex-row gap-1 overflow-x-auto p-3 lg:flex-col lg:gap-0 lg:overflow-visible"
+          className="admin-sidebar-shell flex flex-row gap-1 overflow-x-auto p-3 lg:flex-col lg:gap-0 lg:overflow-visible"
           aria-label="Navigasi panel admin"
         >
-          <p className="hidden w-full border-b border-black/10 pb-2 text-[10px] font-black uppercase tracking-[0.2em] text-black/45 lg:mb-2 lg:block">
-            Menu
-          </p>
+          <p className="admin-nav-section-label hidden lg:block">Menu</p>
           <button
             type="button"
             className={`${navBtnClass(activeView === "settings")} shrink-0 whitespace-nowrap lg:w-full lg:whitespace-normal`}
@@ -536,9 +564,7 @@ export function AdminDashboard({ initialSettings, initialSections, leads }: Prop
             className="hidden h-px w-full bg-black/10 lg:my-2 lg:block"
             role="presentation"
           />
-          <p className="hidden px-1 pb-1 text-[10px] font-black uppercase tracking-wider text-black/40 lg:block">
-            Tiap section
-          </p>
+          <p className="admin-nav-section-label hidden lg:block">Tiap section</p>
           <div className="flex flex-row gap-1 overflow-x-auto lg:max-h-[min(40vh,22rem)] lg:flex-col lg:overflow-y-auto lg:pr-1">
             {sectionNavItems.map((item) => (
               <button
@@ -589,217 +615,287 @@ export function AdminDashboard({ initialSettings, initialSections, leads }: Prop
       </aside>
 
       <div className="min-w-0 min-h-0 flex-1 overflow-y-auto pb-8 [scrollbar-gutter:stable]">
-        {activeView === "settings" ? (
-      <section className="retro-card">
-        <h2 className="section-title">Pengaturan situs</h2>
-        <div className="mt-4 grid gap-3 md:grid-cols-2">
-          <input
-            className="retro-input"
-            value={settings.siteName}
-            onChange={(e) => setSettings((prev) => ({ ...prev, siteName: e.target.value }))}
-            placeholder="Nama situs"
-          />
-          <div className="md:col-span-2 space-y-2 rounded-xl border-2 border-black/10 bg-white/60 p-4">
-            <p className="text-sm font-bold">Logo header beranda</p>
-            <p className="text-xs font-semibold text-black/55">
-              Jika diisi, teks nama situs di atas halaman diganti logo ini (teks nama tetap dipakai
-              untuk alt & SEO).
-            </p>
-            <input
-              className="retro-input"
-              value={settings.siteLogoUrl ?? ""}
-              onChange={(e) =>
-                setSettings((prev) => ({ ...prev, siteLogoUrl: e.target.value }))
-              }
-              placeholder="URL logo (atau upload)"
-            />
-            <ImageUploadField
-              label="Upload logo beranda"
-              currentUrl={settings.siteLogoUrl ?? ""}
-              onUrlChange={(url) =>
-                setSettings((prev) => ({ ...prev, siteLogoUrl: url }))
-              }
-            />
-          </div>
-          <input
-            className="retro-input"
-            value={settings.tagline}
-            onChange={(e) => setSettings((prev) => ({ ...prev, tagline: e.target.value }))}
-            placeholder="Tagline"
-          />
-          <label className="font-bold">
-            Warna utama (#26CCC2)
-            <input
-              type="color"
-              className="mt-1 h-12 w-full cursor-pointer rounded-xl shadow-sm"
-              value={settings.primaryColor}
-              onChange={(e) => setSettings((prev) => ({ ...prev, primaryColor: e.target.value }))}
-            />
-          </label>
-          <label className="font-bold">
-            Warna sekunder (#FAE3C7)
-            <input
-              type="color"
-              className="mt-1 h-12 w-full cursor-pointer rounded-xl shadow-sm"
-              value={settings.secondaryColor}
-              onChange={(e) =>
-                setSettings((prev) => ({ ...prev, secondaryColor: e.target.value }))
-              }
-            />
-          </label>
-          <label className="font-bold">
-            Aksen (#FFB76C)
-            <input
-              type="color"
-              className="mt-1 h-12 w-full cursor-pointer rounded-xl shadow-sm"
-              value={settings.accentColor}
-              onChange={(e) => setSettings((prev) => ({ ...prev, accentColor: e.target.value }))}
-            />
-          </label>
-          <div className="md:col-span-2 space-y-2 rounded-xl border-2 border-black/10 bg-white/60 p-4">
-            <p className="text-sm font-bold">Gambar hero</p>
-            <input
-              className="retro-input"
-              value={settings.heroImageUrl ?? ""}
-              onChange={(e) => setSettings((prev) => ({ ...prev, heroImageUrl: e.target.value }))}
-              placeholder="URL gambar hero (atau upload di bawah)"
-            />
-            <ImageUploadField
-              label="Upload gambar hero"
-              currentUrl={settings.heroImageUrl ?? ""}
-              onUrlChange={(url) =>
-                setSettings((prev) => ({ ...prev, heroImageUrl: url }))
-              }
-            />
-          </div>
-          <div className="md:col-span-2 space-y-2 rounded-xl border-2 border-black/10 bg-white/60 p-4">
-            <p className="text-sm font-bold">Logo halaman login admin</p>
-            <input
-              className="retro-input"
-              value={settings.adminLogoUrl ?? ""}
-              onChange={(e) =>
-                setSettings((prev) => ({ ...prev, adminLogoUrl: e.target.value }))
-              }
-              placeholder="URL logo (atau upload)"
-            />
-            <ImageUploadField
-              label="Upload logo admin"
-              currentUrl={settings.adminLogoUrl ?? ""}
-              onUrlChange={(url) =>
-                setSettings((prev) => ({ ...prev, adminLogoUrl: url }))
-              }
-            />
-          </div>
-          <div className="md:col-span-2 space-y-2 rounded-xl border-2 border-black/10 bg-white/60 p-4">
-            <p className="text-sm font-bold">Favicon situs</p>
-            <p className="text-xs font-semibold text-black/55">
-              Tampil di tab browser. Format .ico, .png, atau .svg (URL penuh).
-            </p>
-            <input
-              className="retro-input"
-              value={settings.faviconUrl ?? ""}
-              onChange={(e) =>
-                setSettings((prev) => ({ ...prev, faviconUrl: e.target.value }))
-              }
-              placeholder="URL favicon"
-            />
-            <ImageUploadField
-              label="Upload favicon"
-              currentUrl={settings.faviconUrl ?? ""}
-              onUrlChange={(url) =>
-                setSettings((prev) => ({ ...prev, faviconUrl: url }))
-              }
-            />
-          </div>
-          <TalentGalleryEditor
-            json={settings.talentGalleryJson}
-            onChange={(talentGalleryJson) =>
-              setSettings((prev) => ({ ...prev, talentGalleryJson }))
-            }
-          />
-          <input
-            className="retro-input"
-            value={settings.contactEmail ?? ""}
-            onChange={(e) => setSettings((prev) => ({ ...prev, contactEmail: e.target.value }))}
-            placeholder="Email kontak"
-          />
-          <label className="font-bold md:col-span-1">
-            Nomor WhatsApp (tampil di halaman kontak)
-            <input
-              className="retro-input mt-1 font-normal"
-              value={settings.contactWhatsapp ?? ""}
-              onChange={(e) =>
-                setSettings((prev) => ({ ...prev, contactWhatsapp: e.target.value }))
-              }
-              placeholder="+6281234567890 atau 081234567890"
-              inputMode="tel"
-              autoComplete="tel"
-            />
-            <span className="mt-1 block text-xs font-semibold text-black/55">
-              Boleh pakai +62, 08…, atau spasi; link wa.me dibuat otomatis.
+        <div className="admin-context-bar" role="status" aria-live="polite">
+          <span className="admin-context-bar-label">Anda di</span>
+          <span className="admin-context-bar-value">{adminContext.title}</span>
+          {adminContext.subtitle ? (
+            <span className="ml-auto hidden max-w-[min(100%,20rem)] truncate text-xs font-semibold text-black/50 sm:inline">
+              {adminContext.subtitle}
             </span>
-          </label>
-          <textarea
-            className="retro-input md:col-span-2 min-h-[88px]"
-            value={settings.locationAddress ?? ""}
-            onChange={(e) =>
-              setSettings((prev) => ({ ...prev, locationAddress: e.target.value || null }))
-            }
-            placeholder="Alamat (Contact)"
-          />
-          <label className="font-bold md:col-span-2">
-            Link Google Maps (tombol di section kontak)
-            <input
-              className="retro-input mt-1 font-normal"
-              value={settings.mapsUrl ?? ""}
-              onChange={(e) =>
-                setSettings((prev) => ({ ...prev, mapsUrl: e.target.value || null }))
-              }
-              placeholder="https://maps.google.com/... atau maps.app.goo.gl/..."
-              inputMode="url"
-            />
-            <span className="mt-1 block text-xs font-semibold text-black/55">
-              Tempel URL lengkap; kalau tanpa https:// akan ditambahkan otomatis saat simpan.
-            </span>
-          </label>
-          <input
-            className="retro-input md:col-span-2"
-            value={settings.seoTitle ?? ""}
-            onChange={(e) => setSettings((prev) => ({ ...prev, seoTitle: e.target.value }))}
-            placeholder="SEO title"
-          />
-          <textarea
-            className="retro-input md:col-span-2"
-            value={settings.seoDescription ?? ""}
-            onChange={(e) =>
-              setSettings((prev) => ({ ...prev, seoDescription: e.target.value }))
-            }
-            placeholder="SEO description"
-          />
-          <input
-            className="retro-input md:col-span-2"
-            value={settings.seoKeywords ?? ""}
-            onChange={(e) => setSettings((prev) => ({ ...prev, seoKeywords: e.target.value }))}
-            placeholder="SEO keywords"
-          />
-          <textarea
-            className="retro-input md:col-span-2"
-            value={settings.brandPurpose}
-            onChange={(e) => setSettings((prev) => ({ ...prev, brandPurpose: e.target.value }))}
-            placeholder="Brand purpose"
-          />
+          ) : null}
         </div>
-        <button type="button" className="retro-button mt-4" onClick={saveSettings}>
-          Simpan pengaturan
-        </button>
+        {activeView === "settings" ? (
+      <section className="admin-content-card">
+        <h2 className="admin-section-heading">Pengaturan situs</h2>
+        <p className="mt-2 max-w-2xl text-sm text-black/65">
+          Ubah per blok, lalu simpan — data baru tampil di beranda setelah berhasil disimpan.
+        </p>
+        <div className="mt-6 flex flex-col gap-8">
+          <div className="admin-form-group space-y-3">
+            <h3 className="admin-form-group-title">Identitas & tagline</h3>
+            <div className="grid gap-3 md:grid-cols-2">
+              <input
+                className="retro-input"
+                value={settings.siteName}
+                onChange={(e) => setSettings((prev) => ({ ...prev, siteName: e.target.value }))}
+                placeholder="Nama situs"
+              />
+              <input
+                className="retro-input"
+                value={settings.tagline}
+                onChange={(e) => setSettings((prev) => ({ ...prev, tagline: e.target.value }))}
+                placeholder="Tagline"
+              />
+            </div>
+            <div className="space-y-2 rounded-xl border-2 border-black/10 bg-white/60 p-4">
+              <p className="text-sm font-bold">Logo header beranda</p>
+              <p className="text-xs font-semibold text-black/55">
+                Jika diisi, teks nama situs di atas halaman diganti logo ini (teks nama tetap dipakai
+                untuk alt & SEO).
+              </p>
+              <input
+                className="retro-input"
+                value={settings.siteLogoUrl ?? ""}
+                onChange={(e) =>
+                  setSettings((prev) => ({ ...prev, siteLogoUrl: e.target.value }))
+                }
+                placeholder="URL logo (atau upload)"
+              />
+              <ImageUploadField
+                label="Upload logo beranda"
+                currentUrl={settings.siteLogoUrl ?? ""}
+                onUrlChange={(url) =>
+                  setSettings((prev) => ({ ...prev, siteLogoUrl: url }))
+                }
+              />
+            </div>
+          </div>
+
+          <div className="admin-form-group space-y-3">
+            <h3 className="admin-form-group-title">Warna tema</h3>
+            <div className="grid gap-3 sm:grid-cols-3">
+              <label className="font-bold">
+                Warna utama (#26CCC2)
+                <input
+                  type="color"
+                  className="mt-1 h-12 w-full cursor-pointer rounded-xl shadow-sm"
+                  value={settings.primaryColor}
+                  onChange={(e) =>
+                    setSettings((prev) => ({ ...prev, primaryColor: e.target.value }))
+                  }
+                />
+              </label>
+              <label className="font-bold">
+                Warna sekunder (#FAE3C7)
+                <input
+                  type="color"
+                  className="mt-1 h-12 w-full cursor-pointer rounded-xl shadow-sm"
+                  value={settings.secondaryColor}
+                  onChange={(e) =>
+                    setSettings((prev) => ({ ...prev, secondaryColor: e.target.value }))
+                  }
+                />
+              </label>
+              <label className="font-bold">
+                Aksen (#FFB76C)
+                <input
+                  type="color"
+                  className="mt-1 h-12 w-full cursor-pointer rounded-xl shadow-sm"
+                  value={settings.accentColor}
+                  onChange={(e) =>
+                    setSettings((prev) => ({ ...prev, accentColor: e.target.value }))
+                  }
+                />
+              </label>
+            </div>
+          </div>
+
+          <div className="admin-form-group space-y-4">
+            <h3 className="admin-form-group-title">Gambar & ikon</h3>
+            <div className="space-y-2 rounded-xl border-2 border-black/10 bg-white/60 p-4">
+              <p className="text-sm font-bold">Gambar hero</p>
+              <input
+                className="retro-input"
+                value={settings.heroImageUrl ?? ""}
+                onChange={(e) =>
+                  setSettings((prev) => ({ ...prev, heroImageUrl: e.target.value }))
+                }
+                placeholder="URL gambar hero (atau upload di bawah)"
+              />
+              <ImageUploadField
+                label="Upload gambar hero"
+                currentUrl={settings.heroImageUrl ?? ""}
+                onUrlChange={(url) =>
+                  setSettings((prev) => ({ ...prev, heroImageUrl: url }))
+                }
+              />
+            </div>
+            <div className="space-y-2 rounded-xl border-2 border-black/10 bg-white/60 p-4">
+              <p className="text-sm font-bold">Logo halaman login admin</p>
+              <input
+                className="retro-input"
+                value={settings.adminLogoUrl ?? ""}
+                onChange={(e) =>
+                  setSettings((prev) => ({ ...prev, adminLogoUrl: e.target.value }))
+                }
+                placeholder="URL logo (atau upload)"
+              />
+              <ImageUploadField
+                label="Upload logo admin"
+                currentUrl={settings.adminLogoUrl ?? ""}
+                onUrlChange={(url) =>
+                  setSettings((prev) => ({ ...prev, adminLogoUrl: url }))
+                }
+              />
+            </div>
+            <div className="space-y-2 rounded-xl border-2 border-black/10 bg-white/60 p-4">
+              <p className="text-sm font-bold">Favicon situs</p>
+              <p className="text-xs font-semibold text-black/55">
+                Tampil di tab browser. Format .ico, .png, atau .svg (URL penuh).
+              </p>
+              <input
+                className="retro-input"
+                value={settings.faviconUrl ?? ""}
+                onChange={(e) =>
+                  setSettings((prev) => ({ ...prev, faviconUrl: e.target.value }))
+                }
+                placeholder="URL favicon"
+              />
+              <ImageUploadField
+                label="Upload favicon"
+                currentUrl={settings.faviconUrl ?? ""}
+                onUrlChange={(url) =>
+                  setSettings((prev) => ({ ...prev, faviconUrl: url }))
+                }
+              />
+            </div>
+          </div>
+
+          <div className="admin-form-group space-y-4">
+            <h3 className="admin-form-group-title">Galeri & form leads</h3>
+            <TalentGalleryEditor
+              json={settings.talentGalleryJson}
+              onChange={(talentGalleryJson) =>
+                setSettings((prev) => ({ ...prev, talentGalleryJson }))
+              }
+            />
+            <LeadFormFieldsEditor
+              json={settings.leadFormFieldsJson}
+              onChange={(leadFormFieldsJson) =>
+                setSettings((prev) => ({ ...prev, leadFormFieldsJson }))
+              }
+            />
+          </div>
+
+          <div className="admin-form-group space-y-3">
+            <h3 className="admin-form-group-title">Kontak di halaman publik</h3>
+            <div className="grid gap-3 md:grid-cols-2">
+              <input
+                className="retro-input"
+                value={settings.contactEmail ?? ""}
+                onChange={(e) =>
+                  setSettings((prev) => ({ ...prev, contactEmail: e.target.value }))
+                }
+                placeholder="Email kontak"
+              />
+              <label className="font-bold">
+                Nomor WhatsApp (tampil di halaman kontak)
+                <input
+                  className="retro-input mt-1 font-normal"
+                  value={settings.contactWhatsapp ?? ""}
+                  onChange={(e) =>
+                    setSettings((prev) => ({ ...prev, contactWhatsapp: e.target.value }))
+                  }
+                  placeholder="+6281234567890 atau 081234567890"
+                  inputMode="tel"
+                  autoComplete="tel"
+                />
+                <span className="mt-1 block text-xs font-semibold text-black/55">
+                  Boleh pakai +62, 08…, atau spasi; link wa.me dibuat otomatis.
+                </span>
+              </label>
+            </div>
+            <textarea
+              className="retro-input min-h-[88px]"
+              value={settings.locationAddress ?? ""}
+              onChange={(e) =>
+                setSettings((prev) => ({ ...prev, locationAddress: e.target.value || null }))
+              }
+              placeholder="Alamat (Contact)"
+            />
+            <label className="font-bold">
+              Link Google Maps (tombol di section kontak)
+              <input
+                className="retro-input mt-1 font-normal"
+                value={settings.mapsUrl ?? ""}
+                onChange={(e) =>
+                  setSettings((prev) => ({ ...prev, mapsUrl: e.target.value || null }))
+                }
+                placeholder="https://maps.google.com/... atau maps.app.goo.gl/..."
+                inputMode="url"
+              />
+              <span className="mt-1 block text-xs font-semibold text-black/55">
+                Tempel URL lengkap; kalau tanpa https:// akan ditambahkan otomatis saat simpan.
+              </span>
+            </label>
+          </div>
+
+          <div className="admin-form-group space-y-3">
+            <h3 className="admin-form-group-title">SEO</h3>
+            <input
+              className="retro-input"
+              value={settings.seoTitle ?? ""}
+              onChange={(e) => setSettings((prev) => ({ ...prev, seoTitle: e.target.value }))}
+              placeholder="SEO title"
+            />
+            <textarea
+              className="retro-input"
+              value={settings.seoDescription ?? ""}
+              onChange={(e) =>
+                setSettings((prev) => ({ ...prev, seoDescription: e.target.value }))
+              }
+              placeholder="SEO description"
+            />
+            <input
+              className="retro-input"
+              value={settings.seoKeywords ?? ""}
+              onChange={(e) =>
+                setSettings((prev) => ({ ...prev, seoKeywords: e.target.value }))
+              }
+              placeholder="SEO keywords"
+            />
+          </div>
+
+          <div className="admin-form-group space-y-3">
+            <h3 className="admin-form-group-title">Brand purpose</h3>
+            <textarea
+              className="retro-input min-h-[100px]"
+              value={settings.brandPurpose}
+              onChange={(e) =>
+                setSettings((prev) => ({ ...prev, brandPurpose: e.target.value }))
+              }
+              placeholder="Brand purpose"
+            />
+          </div>
+        </div>
+        <div className="admin-sticky-actions">
+          <div className="admin-sticky-actions-inner">
+            <p className="text-xs font-semibold text-black/55 sm:max-w-md">
+              Perubahan belum ke server sampai Anda menekan simpan.
+            </p>
+            <button type="button" className="retro-button shrink-0" onClick={saveSettings}>
+              Simpan pengaturan
+            </button>
+          </div>
+        </div>
       </section>
         ) : null}
 
         {activeView === "sections-hub" ? (
-      <section className="retro-card">
+      <section className="admin-content-card">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
-            <h2 className="section-title">Section halaman</h2>
+            <h2 className="admin-section-heading">Section halaman</h2>
             <p className="mt-2 text-sm text-black/70">
               Pilih section di sidebar atau di bawah untuk mengedit isinya. Buat section baru di
               sini.
@@ -918,7 +1014,7 @@ export function AdminDashboard({ initialSettings, initialSections, leads }: Prop
         ) : null}
 
         {isSectionView(activeView) ? (
-      <section className="retro-card">
+      <section className="admin-content-card">
         {(() => {
           const sid = activeView.slice("section:".length);
           const section = sortedSections.find((s) => s.id === sid);
@@ -954,28 +1050,43 @@ export function AdminDashboard({ initialSettings, initialSections, leads }: Prop
         ) : null}
 
         {activeView === "leads" ? (
-      <section className="retro-card">
-        <h2 className="section-title">Leads ({leads.length})</h2>
-        <div className="mt-4 overflow-x-auto">
-          <table className="w-full border-collapse text-left">
+      <section className="admin-content-card">
+        <h2 className="admin-section-heading">Leads ({leads.length})</h2>
+        <div className="mt-6 overflow-x-auto rounded-2xl border-2 border-black/12 bg-white/50 shadow-[4px_4px_0_0_rgba(13,13,13,0.06)]">
+          <table className="w-full min-w-[640px] border-collapse text-left text-sm">
             <thead>
-              <tr className="bg-[var(--brand-primary)]">
-                <th className="p-3 font-black">Name</th>
-                <th className="p-3 font-black">Email</th>
-                <th className="p-3 font-black">Brand</th>
-                <th className="p-3 font-black">Message</th>
+              <tr className="border-b-2 border-[var(--retro-black)] bg-[color-mix(in_srgb,var(--brand-primary)_88%,white)]">
+                <th className="p-3.5 font-black whitespace-nowrap text-[var(--retro-black)]">
+                  Waktu
+                </th>
+                {leadFormFieldsForTable.map((f) => (
+                  <th key={f.id} className="p-3.5 font-black text-[var(--retro-black)]">
+                    {f.label}
+                  </th>
+                ))}
               </tr>
             </thead>
             <tbody>
               {leads.map((lead, index) => (
                 <tr
                   key={lead.id}
-                  className={index % 2 === 0 ? "bg-white/50" : "bg-white/70"}
+                  className={
+                    index % 2 === 0
+                      ? "bg-white/60 transition hover:bg-white/90"
+                      : "bg-[color-mix(in_srgb,var(--brand-secondary)_35%,white)] transition hover:bg-white/95"
+                  }
                 >
-                  <td className="p-3 align-top">{lead.fullName}</td>
-                  <td className="p-3 align-top">{lead.email}</td>
-                  <td className="p-3 align-top">{lead.brandName || "-"}</td>
-                  <td className="p-3 align-top">{lead.message}</td>
+                  <td className="p-3 align-top whitespace-nowrap text-xs font-semibold text-black/70">
+                    {new Date(lead.createdAt).toLocaleString("id-ID", {
+                      dateStyle: "short",
+                      timeStyle: "short",
+                    })}
+                  </td>
+                  {leadFormFieldsForTable.map((f) => (
+                    <td key={f.id} className="p-3 align-top">
+                      {getLeadCellValue(lead, f.id)}
+                    </td>
+                  ))}
                 </tr>
               ))}
             </tbody>

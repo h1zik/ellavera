@@ -93,6 +93,8 @@ model SiteSettings {
   siteLogoUrl        String?
   /** JSON array: [{ "imageUrl": "https://...", "name": "...", "role": "..." }] */
   talentGalleryJson  String?  @db.Text
+  /** JSON array field form leads: id, label, type, required, placeholder, minLength, maxLength */
+  leadFormFieldsJson String?  @db.Text
   updatedAt        DateTime @updatedAt
 }
 
@@ -103,6 +105,8 @@ model Lead {
   email       String
   phone       String?
   message     String   @db.Text
+  /** JSON map jawaban sesuai id field di leadFormFieldsJson saat submit */
+  responsesJson String? @db.Text
   source      String   @default("landing-page")
   status      String   @default("new")
   createdAt   DateTime @default(now())

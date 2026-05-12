@@ -1,4 +1,5 @@
 import { ContentValueType, Prisma, SectionType } from "@prisma/client";
+import { DEFAULT_LEAD_FORM_FIELDS_JSON } from "@/lib/lead-form-config";
 
 export const defaultSettings: Prisma.SiteSettingsCreateInput = {
   id: "default",
@@ -23,6 +24,7 @@ export const defaultSettings: Prisma.SiteSettingsCreateInput = {
   faviconUrl: null,
   siteLogoUrl: null,
   talentGalleryJson: null,
+  leadFormFieldsJson: DEFAULT_LEAD_FORM_FIELDS_JSON,
 };
 
 type SectionSeed = {

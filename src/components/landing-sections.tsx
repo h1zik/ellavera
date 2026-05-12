@@ -1,9 +1,34 @@
 import Image from "next/image";
 import { SectionType, SiteSettings } from "@prisma/client";
 import { LeadForm } from "@/components/lead-form";
+import { parseLeadFormFieldsJson } from "@/lib/lead-form-config";
 import { toWhatsAppHref } from "@/lib/contact-links";
 import { SectionWithContents } from "@/lib/types";
 import { byKey, firstValue, parseJson } from "@/lib/section-content";
+
+function SectionIntro({
+  badge,
+  title,
+  description,
+}: {
+  badge: string;
+  title: string | null | undefined;
+  description?: string | null;
+}) {
+  return (
+    <header className="section-intro">
+      <p className="section-intro-badge">{badge}</p>
+      <div className="section-intro-body">
+        {title ? <h2 className="section-title title-pop">{title}</h2> : null}
+        {description?.trim() ? (
+          <p className="section-description max-w-2xl font-medium text-black/85">
+            {description.trim()}
+          </p>
+        ) : null}
+      </div>
+    </header>
+  );
+}
 
 type Props = {
   sections: SectionWithContents[];
@@ -18,7 +43,7 @@ export function LandingSections({ sections, settings }: Props) {
           id={section.slug}
           key={section.id}
           className={[
-            "retro-card mx-auto w-full max-w-6xl scroll-mt-24",
+            "retro-card mx-auto w-full max-w-6xl scroll-mt-[5.5rem] md:scroll-mt-28",
             index % 2 === 1 ? "section-tone-alt" : "",
           ]
             .filter(Boolean)
@@ -91,6 +116,9 @@ function HeroSection({
             {ctaSecondaryLabel}
           </a>
         </div>
+        <p className="max-w-md pt-2 text-xs font-semibold uppercase tracking-[0.12em] text-black/40">
+          Gratis konsultasi awal · Respon cepat di WhatsApp
+        </p>
       </div>
       <div className="relative h-[300px] md:h-[420px] lg:rotate-[1.25deg]">
         <div className="hero-photo-frame relative h-full w-full">
@@ -114,14 +142,11 @@ function ServicesSection({ section }: { section: SectionWithContents }) {
   const items = byKey(section.contents, "service");
   return (
     <div className="space-y-5">
-      <div className="space-y-2">
-        <h2 className="section-title title-pop">{section.title}</h2>
-        {section.description ? (
-          <p className="section-description max-w-2xl font-medium text-black/85">
-            {section.description}
-          </p>
-        ) : null}
-      </div>
+      <SectionIntro
+        badge={section.name}
+        title={section.title}
+        description={section.description}
+      />
       <ul className="grid gap-4 sm:grid-cols-2">
         {items.map((item, index) => (
           <li
@@ -146,14 +171,11 @@ function ProcessSection({ section }: { section: SectionWithContents }) {
   const items = byKey(section.contents, "step");
   return (
     <div className="space-y-5">
-      <div className="space-y-2">
-        <h2 className="section-title title-pop">{section.title}</h2>
-        {section.description ? (
-          <p className="section-description max-w-2xl font-medium text-black/85">
-            {section.description}
-          </p>
-        ) : null}
-      </div>
+      <SectionIntro
+        badge={section.name}
+        title={section.title}
+        description={section.description}
+      />
       <ol className="space-y-8">
         {items.map((item, index) => (
           <li key={item.id} className="flex gap-4">
@@ -185,14 +207,11 @@ function WhyUsSection({ section }: { section: SectionWithContents }) {
   const points = byKey(section.contents, "point");
   return (
     <div className="space-y-5">
-      <div className="space-y-2">
-        <h2 className="section-title title-pop">{section.title}</h2>
-        {section.description ? (
-          <p className="section-description max-w-2xl font-medium text-black/85">
-            {section.description}
-          </p>
-        ) : null}
-      </div>
+      <SectionIntro
+        badge={section.name}
+        title={section.title}
+        description={section.description}
+      />
       <ul className="grid gap-3 md:grid-cols-2">
         {points.map((item, i) => (
           <li key={item.id} className="retro-ticket">
@@ -219,14 +238,11 @@ function ClientPortfolioSection({ section }: { section: SectionWithContents }) {
 
   return (
     <div className="space-y-5">
-      <div className="space-y-2">
-        <h2 className="section-title title-pop">{section.title}</h2>
-        {section.description ? (
-          <p className="section-description max-w-2xl font-medium text-black/85">
-            {section.description}
-          </p>
-        ) : null}
-      </div>
+      <SectionIntro
+        badge={section.name}
+        title={section.title}
+        description={section.description}
+      />
       <ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {brands.map((brand, idx) =>
           brand.imageUrl ? (
@@ -263,14 +279,11 @@ function FactoryGallerySection({ section }: { section: SectionWithContents }) {
 
   return (
     <div className="space-y-5">
-      <div className="space-y-2">
-        <h2 className="section-title title-pop">{section.title}</h2>
-        {section.description ? (
-          <p className="section-description max-w-2xl font-medium text-black/85">
-            {section.description}
-          </p>
-        ) : null}
-      </div>
+      <SectionIntro
+        badge={section.name}
+        title={section.title}
+        description={section.description}
+      />
       <ul className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         {photos.map((photo, idx) =>
           photo.imageUrl ? (
@@ -308,7 +321,7 @@ function TestimonialSection({ section }: { section: SectionWithContents }) {
 
   return (
     <div className="space-y-4">
-      <h2 className="section-title title-pop">{section.title}</h2>
+      <SectionIntro badge={section.name} title={section.title} />
       <div className="grid gap-4 md:grid-cols-2">
         {testimonials.map((item, idx) => (
           <blockquote key={`${item.author}-${idx}`} className="retro-item">
@@ -334,10 +347,11 @@ function EducationSection({ section }: { section: SectionWithContents }) {
 
   return (
     <div className="space-y-4">
-      <h2 className="section-title title-pop">{section.title}</h2>
-      {section.description ? (
-        <p className="section-description max-w-xl">{section.description}</p>
-      ) : null}
+      <SectionIntro
+        badge={section.name}
+        title={section.title}
+        description={section.description}
+      />
       <div className="grid gap-4 md:grid-cols-2">
         {articles.map((article, idx) => (
           <article key={`${article.title}-${idx}`} className="retro-item">
@@ -365,7 +379,7 @@ function FaqSection({ section }: { section: SectionWithContents }) {
 
   return (
     <div className="space-y-5">
-      <h2 className="section-title title-pop">{section.title}</h2>
+      <SectionIntro badge={section.name} title={section.title} />
       <div className="space-y-3">
         {faqs.map((faq, idx) => (
           <details
@@ -396,17 +410,15 @@ function ContactSection({
   settings: SiteSettings;
 }) {
   const wa = toWhatsAppHref(settings.contactWhatsapp);
+  const leadFields = parseLeadFormFieldsJson(settings.leadFormFieldsJson);
 
   return (
     <div className="space-y-6">
-      <div className="space-y-2">
-        <h2 className="section-title title-pop">{section.title}</h2>
-        {section.description ? (
-          <p className="section-description max-w-2xl font-medium text-black/85">
-            {section.description}
-          </p>
-        ) : null}
-      </div>
+      <SectionIntro
+        badge={section.name}
+        title={section.title}
+        description={section.description}
+      />
       <div className="grid gap-8 lg:grid-cols-2 lg:items-start">
         <div className="retro-contact-panel">
           <h3 className="text-sm font-black uppercase tracking-[0.2em] text-black/70">
@@ -450,9 +462,14 @@ function ContactSection({
             ) : null}
           </div>
         </div>
-        <div className="space-y-3">
-          <p className="text-sm font-black uppercase tracking-wide text-black/70">Kirim brief</p>
-          <LeadForm />
+        <div className="retro-lead-panel space-y-4">
+          <div>
+            <p className="retro-lead-heading">Kirim brief</p>
+            <p className="mt-1 text-xs font-medium text-black/55 md:text-sm">
+              Isi form di bawah — respons tim biasanya dalam 1 hari kerja.
+            </p>
+          </div>
+          <LeadForm fields={leadFields} />
         </div>
       </div>
     </div>

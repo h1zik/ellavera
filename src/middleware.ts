@@ -14,6 +14,14 @@ function isLoginApi(pathname: string) {
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
+  /**
+   * Browser meminta `/favicon.ico` ke origin dulu. Tanpa ini, Vercel/CDN sering mengembalikan
+   * favicon default sebelum rewrite `next.config` atau metadata eksternal dipakai.
+   */
+  if (pathname === "/favicon.ico") {
+    return NextResponse.rewrite(new URL("/api/favicon", request.url));
+  }
+
   /** Health di Edge: tanpa Prisma/worker. Kalau ini tetap 503, request tidak sampai ke Next (proxy/start/root). */
   if (pathname === "/api/health") {
     return NextResponse.json({
@@ -57,5 +65,5 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/api/health", "/admin/:path*", "/api/admin/:path*"],
+  matcher: ["/favicon.ico", "/api/health", "/admin/:path*", "/api/admin/:path*"],
 };

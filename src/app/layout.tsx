@@ -1,8 +1,6 @@
 import type { Metadata } from "next";
 import localFont from "next/font/local";
-import { unstable_cache } from "next/cache";
 import "./globals.css";
-import { LANDING_CACHE_TAG } from "@/lib/data";
 import { prisma } from "@/lib/prisma";
 
 const geistSans = localFont({
@@ -16,17 +14,22 @@ const geistMono = localFont({
   weight: "100 900",
 });
 
-const getSettingsForMetadata = unstable_cache(
-  () =>
-    prisma.siteSettings.findUnique({
-      where: { id: "default" },
-    }),
-  ["site-settings-metadata-v2"],
-  { tags: [LANDING_CACHE_TAG], revalidate: 300 },
-);
+/** Tebak MIME untuk <link type="…"> — membantu browser/CDN. */
+function iconMimeFromUrl(url: string): string | undefined {
+  const path = url.toLowerCase().split("?")[0] ?? "";
+  if (path.endsWith(".svg")) return "image/svg+xml";
+  if (path.endsWith(".png")) return "image/png";
+  if (path.endsWith(".ico")) return "image/x-icon";
+  if (path.endsWith(".webp")) return "image/webp";
+  if (path.endsWith(".jpg") || path.endsWith(".jpeg")) return "image/jpeg";
+  return undefined;
+}
 
 export async function generateMetadata(): Promise<Metadata> {
-  const settings = await getSettingsForMetadata();
+  /** Tanpa unstable_cache: favicon/title harus langsung ikut DB setelah simpan di admin (bukan cache 300s). */
+  const settings = await prisma.siteSettings.findUnique({
+    where: { id: "default" },
+  });
 
   const title =
     settings?.seoTitle ??
@@ -37,9 +40,18 @@ export async function generateMetadata(): Promise<Metadata> {
   const keywords = settings?.seoKeywords;
 
   const favicon = settings?.faviconUrl?.trim();
-  /** Tanpa `as const` — Next `Metadata.icons` mengharuskan `Icon[]` mutable. */
-  const icons: Metadata["icons"] = favicon
-    ? { icon: [{ url: favicon }] }
+  /** Same-origin `/favicon.ico` → rewrite ke `/api/favicon` (isi dari DB). */
+  const mime = favicon ? iconMimeFromUrl(favicon) : undefined;
+  const sameOriginIcon = favicon
+    ? { url: "/favicon.ico", ...(mime ? { type: mime } : { type: "image/png" as const }) }
+    : null;
+
+  const icons: Metadata["icons"] | undefined = sameOriginIcon
+    ? {
+        icon: [sameOriginIcon],
+        shortcut: [sameOriginIcon],
+        apple: [sameOriginIcon],
+      }
     : undefined;
 
   return {

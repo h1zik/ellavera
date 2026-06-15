@@ -30,6 +30,17 @@ const nextConfig = {
         protocol: "https",
         hostname: "placehold.co",
       },
+      {
+        protocol: "https",
+        hostname: "api.mibchemicals.com",
+        pathname: "/storage/v1/object/public/**",
+      },
+      // Legacy cloud URLs (sementara, sampai semua record di DB ter-rewrite)
+      {
+        protocol: "https",
+        hostname: "ykaxxnsnlimpqhzvvsrz.supabase.co",
+        pathname: "/storage/v1/object/public/**",
+      },
       ...supabaseImageHosts(),
     ],
   },

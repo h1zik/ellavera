@@ -18,6 +18,7 @@ export const defaultSettings: Prisma.SiteSettingsCreateInput = {
   seoDescription:
     "Private label skincare & bodycare: cepat, legal, bareng tim yang satu energi sama kamu.",
   seoKeywords: "maklon kosmetik, Gen-Z brand, private label, skincare",
+  metaPixelId: null,
   heroImageUrl:
     "https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?auto=format&fit=crop&w=1000&q=80",
   adminLogoUrl: null,

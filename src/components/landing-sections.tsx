@@ -1,6 +1,7 @@
 import Image from "next/image";
 import { SectionType, SiteSettings } from "@prisma/client";
 import { LeadForm } from "@/components/lead-form";
+import { WhatsAppLink } from "@/components/whatsapp-link";
 import { parseLeadFormFieldsJson } from "@/lib/lead-form-config";
 import { toWhatsAppHref } from "@/lib/contact-links";
 import { SectionWithContents } from "@/lib/types";
@@ -441,14 +442,12 @@ function ContactSection({
               </a>
             ) : null}
             {settings.contactWhatsapp ? (
-              <a
+              <WhatsAppLink
                 href={wa}
-                target="_blank"
-                rel="noopener noreferrer"
                 className="w-fit rounded-xl bg-[#25D366] px-4 py-2 font-black uppercase tracking-wide text-white shadow-md transition hover:-translate-y-0.5"
               >
                 Chat WhatsApp
-              </a>
+              </WhatsAppLink>
             ) : null}
             {settings.mapsUrl ? (
               <a

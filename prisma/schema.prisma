@@ -84,6 +84,8 @@ model SiteSettings {
   seoTitle         String?
   seoDescription   String?  @db.Text
   seoKeywords      String?
+  /** ID Meta (Facebook) Pixel — angka. Jika diisi, pixel + PageView dipasang di semua halaman. */
+  metaPixelId      String?
   heroImageUrl       String?
   /** Logo halaman login admin (URL upload atau path). */
   adminLogoUrl       String?

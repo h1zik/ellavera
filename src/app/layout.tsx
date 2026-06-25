@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import localFont from "next/font/local";
 import "./globals.css";
+import { MetaPixel } from "@/components/meta-pixel";
 import { prisma } from "@/lib/prisma";
 
 const geistSans = localFont({
@@ -68,16 +69,23 @@ export async function generateMetadata(): Promise<Metadata> {
   };
 }
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  /** Langsung dari DB (tanpa cache) agar Pixel ID ikut berubah segera setelah disimpan di admin. */
+  const settings = await prisma.siteSettings.findUnique({
+    where: { id: "default" },
+    select: { metaPixelId: true },
+  });
+
   return (
     <html lang="id">
       <body
         className={`${geistSans.variable} ${geistMono.variable} overflow-x-hidden antialiased`}
       >
+        <MetaPixel pixelId={settings?.metaPixelId} />
         {children}
       </body>
     </html>

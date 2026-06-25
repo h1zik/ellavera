@@ -2,6 +2,7 @@
 
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import type { LeadFormField } from "@/lib/lead-form-config";
+import { trackPixel } from "@/lib/meta-pixel";
 
 function emptyState(fields: LeadFormField[]): Record<string, string> {
   return Object.fromEntries(fields.map((f) => [f.id, ""]));
@@ -45,6 +46,7 @@ export function LeadForm({ fields }: Props) {
       setState(emptyState(fields));
       setStatus("success");
       setFeedback("Terima kasih. Tim Ellavera akan segera menghubungi kamu.");
+      trackPixel("Lead");
     } catch {
       setStatus("error");
       setFeedback("Terjadi kendala. Coba lagi atau hubungi WhatsApp kami.");

@@ -60,6 +60,11 @@ const settingsSchema = z.object({
   seoTitle: str,
   seoDescription: str,
   seoKeywords: str,
+  metaPixelId: str
+    .transform((s) => String(s).trim())
+    .refine((s) => s === "" || /^\d{6,20}$/.test(s), {
+      message: "metaPixelId: kosong atau hanya angka (ID Pixel Meta, ~15-16 digit)",
+    }),
   heroImageUrl: str.refine(isValidHeroOrAssetUrl, {
     message: "heroImageUrl: kosong, URL https://…, atau path /uploads/…",
   }),
@@ -122,6 +127,7 @@ export async function PUT(request: Request) {
       seoTitle: payload.seoTitle.trim() || null,
       seoDescription: payload.seoDescription.trim() || null,
       seoKeywords: payload.seoKeywords.trim() || null,
+      metaPixelId: payload.metaPixelId.trim() || null,
       heroImageUrl: payload.heroImageUrl.trim() || null,
       adminLogoUrl: payload.adminLogoUrl.trim() || null,
       faviconUrl: payload.faviconUrl.trim() || null,

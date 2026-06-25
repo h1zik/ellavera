@@ -163,6 +163,7 @@ export function AdminDashboard({ initialSettings, initialSections, leads }: Prop
       seoTitle: settings.seoTitle ?? "",
       seoDescription: settings.seoDescription ?? "",
       seoKeywords: settings.seoKeywords ?? "",
+      metaPixelId: settings.metaPixelId ?? "",
       heroImageUrl: settings.heroImageUrl ?? "",
       adminLogoUrl: settings.adminLogoUrl ?? "",
       faviconUrl: settings.faviconUrl ?? "",
@@ -864,6 +865,27 @@ export function AdminDashboard({ initialSettings, initialSections, leads }: Prop
               }
               placeholder="SEO keywords"
             />
+          </div>
+
+          <div className="admin-form-group space-y-3">
+            <h3 className="admin-form-group-title">Tracking &amp; iklan</h3>
+            <label className="font-bold">
+              Meta (Facebook) Pixel ID
+              <input
+                className="retro-input mt-1 font-normal"
+                value={settings.metaPixelId ?? ""}
+                onChange={(e) =>
+                  setSettings((prev) => ({ ...prev, metaPixelId: e.target.value }))
+                }
+                placeholder="contoh: 1234567890123456"
+                inputMode="numeric"
+              />
+              <span className="mt-1 block text-xs font-semibold text-black/55">
+                Tempel ID Pixel dari Meta Events Manager (hanya angka, ~15-16 digit). Kosongkan untuk
+                mematikan pixel. Saat diisi, pixel + event PageView, Lead (kirim brief), dan Contact
+                (klik WhatsApp) otomatis aktif.
+              </span>
+            </label>
           </div>
 
           <div className="admin-form-group space-y-3">

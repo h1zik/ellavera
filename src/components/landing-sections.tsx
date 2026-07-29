@@ -100,7 +100,9 @@ function HeroSection({
     <div className="grid gap-8 lg:grid-cols-2 lg:items-center">
       <div className="space-y-5">
         <p className="badge badge-tilt">{section.subtitle || "Ellavera"}</p>
-        <p className="retro-section-kicker">Retro · Playful · High-energy</p>
+        {settings.heroKicker?.trim() ? (
+          <p className="retro-section-kicker">{settings.heroKicker.trim()}</p>
+        ) : null}
         <h1 className="text-4xl font-black leading-[1.05] tracking-tight text-balance text-[var(--retro-black)] md:text-5xl lg:text-6xl">
           {section.title}
         </h1>

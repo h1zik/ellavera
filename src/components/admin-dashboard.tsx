@@ -1,8 +1,9 @@
 "use client";
 
-import { Content, Lead, Section, SectionType, SiteSettings } from "@prisma/client";
+import { Content, Lead, Section, SectionType } from "@prisma/client";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
+import type { AdminSiteSettings } from "@/lib/admin-settings";
 import { ImageUploadField } from "@/components/admin/image-upload-field";
 import { ContentBlockEditor } from "@/components/admin/content-block-editor";
 import { TalentGalleryEditor } from "@/components/admin/talent-gallery-editor";
@@ -18,7 +19,7 @@ import {
 type SectionWithContents = Section & { contents: Content[] };
 
 type Props = {
-  initialSettings: SiteSettings;
+  initialSettings: AdminSiteSettings;
   initialSections: SectionWithContents[];
   leads: Lead[];
 };
@@ -93,6 +94,10 @@ export function AdminDashboard({ initialSettings, initialSections, leads }: Prop
   const [settings, setSettings] = useState(initialSettings);
   const [sections, setSections] = useState(initialSections);
   const [toast, setToast] = useState<ToastState>(null);
+  /** Password SMTP tidak pernah dikirim ke browser; kosong = biarkan yang tersimpan. */
+  const [smtpPassword, setSmtpPassword] = useState("");
+  const [smtpPasswordClear, setSmtpPasswordClear] = useState(false);
+  const [testingEmail, setTestingEmail] = useState(false);
 
   useEffect(() => {
     if (!toast) return;
@@ -154,12 +159,23 @@ export function AdminDashboard({ initialSettings, initialSections, leads }: Prop
     const payload = {
       siteName: settings.siteName,
       tagline: settings.tagline,
+      headerEyebrow: settings.headerEyebrow ?? "",
+      heroKicker: settings.heroKicker ?? "",
       brandPurpose: settings.brandPurpose,
       primaryColor: settings.primaryColor,
       secondaryColor: settings.secondaryColor,
       accentColor: settings.accentColor,
       contactEmail: settings.contactEmail ?? "",
       contactWhatsapp: (settings.contactWhatsapp ?? "").trim(),
+      leadNotifyEmail: (settings.leadNotifyEmail ?? "").trim(),
+      smtpHost: (settings.smtpHost ?? "").trim(),
+      smtpPort: settings.smtpPort == null ? "" : String(settings.smtpPort),
+      smtpSecure:
+        settings.smtpSecure == null ? "auto" : settings.smtpSecure ? "true" : "false",
+      smtpUser: (settings.smtpUser ?? "").trim(),
+      smtpFrom: (settings.smtpFrom ?? "").trim(),
+      smtpPassword: smtpPasswordClear ? "" : smtpPassword,
+      smtpPasswordClear,
       seoTitle: settings.seoTitle ?? "",
       seoDescription: settings.seoDescription ?? "",
       seoKeywords: settings.seoKeywords ?? "",
@@ -182,11 +198,13 @@ export function AdminDashboard({ initialSettings, initialSections, leads }: Prop
 
     if (response.ok) {
       try {
-        const next = (await response.json()) as SiteSettings;
+        const next = (await response.json()) as AdminSiteSettings;
         setSettings(next);
       } catch {
         /* ignore parse */
       }
+      setSmtpPassword("");
+      setSmtpPasswordClear(false);
       pushToast("Pengaturan berhasil disimpan.", "success");
       router.refresh();
       return;
@@ -648,6 +666,39 @@ export function AdminDashboard({ initialSettings, initialSections, leads }: Prop
                 placeholder="Tagline"
               />
             </div>
+            <div className="space-y-3 rounded-xl border-2 border-black/10 bg-white/60 p-4">
+              <div>
+                <p className="text-sm font-bold">Teks kecil (eyebrow)</p>
+                <p className="text-xs font-semibold text-black/55">
+                  Baris huruf kapital kecil di atas logo header & di atas judul hero. Kosongkan
+                  kalau mau disembunyikan.
+                </p>
+              </div>
+              <label className="block text-xs font-bold text-black/70">
+                Header beranda (di atas logo)
+                <input
+                  className="retro-input mt-1"
+                  value={settings.headerEyebrow ?? ""}
+                  onChange={(e) =>
+                    setSettings((prev) => ({ ...prev, headerEyebrow: e.target.value }))
+                  }
+                  placeholder="Maklon · Gen-Z · Unisex"
+                  maxLength={120}
+                />
+              </label>
+              <label className="block text-xs font-bold text-black/70">
+                Hero (di atas judul besar)
+                <input
+                  className="retro-input mt-1"
+                  value={settings.heroKicker ?? ""}
+                  onChange={(e) =>
+                    setSettings((prev) => ({ ...prev, heroKicker: e.target.value }))
+                  }
+                  placeholder="Retro · Playful · High-energy"
+                  maxLength={120}
+                />
+              </label>
+            </div>
             <div className="space-y-2 rounded-xl border-2 border-black/10 bg-white/60 p-4">
               <p className="text-sm font-bold">Logo header beranda</p>
               <p className="text-xs font-semibold text-black/55">
@@ -786,6 +837,187 @@ export function AdminDashboard({ initialSettings, initialSections, leads }: Prop
                 setSettings((prev) => ({ ...prev, leadFormFieldsJson }))
               }
             />
+            <div className="space-y-2 rounded-xl border-2 border-black/10 bg-white/60 p-4">
+              <p className="text-sm font-bold">Email penerima notifikasi lead</p>
+              <p className="text-xs font-semibold text-black/55">
+                Setiap kali ada yang submit form, isinya dikirim ke alamat ini. Boleh lebih dari
+                satu — pisahkan dengan koma. Kalau dikosongkan, dipakai “Email kontak” di blok
+                Kontak.
+              </p>
+              <input
+                className="retro-input"
+                value={settings.leadNotifyEmail ?? ""}
+                onChange={(e) =>
+                  setSettings((prev) => ({ ...prev, leadNotifyEmail: e.target.value }))
+                }
+                placeholder="sales@ellavera.id, owner@ellavera.id"
+                inputMode="email"
+                autoComplete="email"
+              />
+              <p className="text-xs font-semibold text-black/45">
+                Lead tetap tersimpan di tab Leads walau email gagal terkirim.
+              </p>
+            </div>
+
+            <div className="space-y-3 rounded-xl border-2 border-black/10 bg-white/60 p-4">
+              <div>
+                <p className="text-sm font-bold">Server pengirim (SMTP)</p>
+                <p className="text-xs font-semibold text-black/55">
+                  Akun email yang dipakai untuk mengirim notifikasi. Gmail/Google Workspace:
+                  host <code>smtp.gmail.com</code>, port <code>587</code>, password pakai{" "}
+                  <strong>App Password</strong> 16 karakter (bukan password login). Kalau blok ini
+                  dikosongkan, sistem memakai konfigurasi SMTP dari environment server (kalau ada).
+                </p>
+              </div>
+              <div className="grid gap-3 md:grid-cols-2">
+                <label className="block text-xs font-bold text-black/70">
+                  Host SMTP
+                  <input
+                    className="retro-input mt-1 font-normal"
+                    value={settings.smtpHost ?? ""}
+                    onChange={(e) =>
+                      setSettings((prev) => ({ ...prev, smtpHost: e.target.value }))
+                    }
+                    placeholder="smtp.gmail.com"
+                    autoComplete="off"
+                  />
+                </label>
+                <label className="block text-xs font-bold text-black/70">
+                  Port
+                  <input
+                    className="retro-input mt-1 font-normal"
+                    value={settings.smtpPort == null ? "" : String(settings.smtpPort)}
+                    onChange={(e) => {
+                      const raw = e.target.value.replace(/[^0-9]/g, "");
+                      setSettings((prev) => ({
+                        ...prev,
+                        smtpPort: raw ? Number.parseInt(raw, 10) : null,
+                      }));
+                    }}
+                    placeholder="587"
+                    inputMode="numeric"
+                  />
+                </label>
+                <label className="block text-xs font-bold text-black/70">
+                  Username
+                  <input
+                    className="retro-input mt-1 font-normal"
+                    value={settings.smtpUser ?? ""}
+                    onChange={(e) =>
+                      setSettings((prev) => ({ ...prev, smtpUser: e.target.value }))
+                    }
+                    placeholder="akun@gmail.com"
+                    autoComplete="off"
+                  />
+                </label>
+                <label className="block text-xs font-bold text-black/70">
+                  Koneksi aman (SSL/TLS)
+                  <select
+                    className="retro-input mt-1 font-normal"
+                    value={
+                      settings.smtpSecure == null ? "auto" : settings.smtpSecure ? "true" : "false"
+                    }
+                    onChange={(e) =>
+                      setSettings((prev) => ({
+                        ...prev,
+                        smtpSecure:
+                          e.target.value === "auto" ? null : e.target.value === "true",
+                      }))
+                    }
+                  >
+                    <option value="auto">Otomatis (SSL kalau port 465)</option>
+                    <option value="true">Selalu SSL (port 465)</option>
+                    <option value="false">STARTTLS (port 587)</option>
+                  </select>
+                </label>
+              </div>
+              <label className="block text-xs font-bold text-black/70">
+                Password / App Password
+                <input
+                  type="password"
+                  className="retro-input mt-1 font-normal"
+                  value={smtpPassword}
+                  onChange={(e) => {
+                    setSmtpPassword(e.target.value);
+                    if (e.target.value) setSmtpPasswordClear(false);
+                  }}
+                  placeholder={
+                    settings.smtpPasswordSet
+                      ? "•••••••••••• (tersimpan — isi hanya kalau mau ganti)"
+                      : "Belum diisi"
+                  }
+                  autoComplete="new-password"
+                  disabled={smtpPasswordClear}
+                />
+                <span className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs font-semibold text-black/55">
+                  <span>
+                    Status:{" "}
+                    {settings.smtpPasswordSet ? "tersimpan" : "belum diisi"} ·{" "}
+                    {settings.smtpPasswordEncrypted
+                      ? "terenkripsi di database"
+                      : "belum terenkripsi (set SMTP_CRYPT_KEY di server)"}
+                  </span>
+                  {settings.smtpPasswordSet ? (
+                    <label className="inline-flex items-center gap-1.5 font-bold text-black/70">
+                      <input
+                        type="checkbox"
+                        checked={smtpPasswordClear}
+                        onChange={(e) => {
+                          setSmtpPasswordClear(e.target.checked);
+                          if (e.target.checked) setSmtpPassword("");
+                        }}
+                      />
+                      Hapus password saat simpan
+                    </label>
+                  ) : null}
+                </span>
+              </label>
+              <label className="block text-xs font-bold text-black/70">
+                Alamat pengirim (From)
+                <input
+                  className="retro-input mt-1 font-normal"
+                  value={settings.smtpFrom ?? ""}
+                  onChange={(e) =>
+                    setSettings((prev) => ({ ...prev, smtpFrom: e.target.value }))
+                  }
+                  placeholder='Ellavera Website <no-reply@ellavera.id>'
+                />
+                <span className="mt-1 block text-xs font-semibold text-black/55">
+                  Kosong = pakai username di atas. Banyak provider menolak alamat pengirim yang
+                  berbeda dari akun SMTP.
+                </span>
+              </label>
+              <div className="flex flex-wrap items-center gap-3 border-t-2 border-dashed border-black/10 pt-3">
+                <button
+                  type="button"
+                  className="retro-button-alt px-4 py-2 text-xs font-black disabled:opacity-60"
+                  disabled={testingEmail}
+                  onClick={async () => {
+                    setTestingEmail(true);
+                    try {
+                      const res = await fetch("/api/admin/test-email", {
+                        method: "POST",
+                        credentials: "same-origin",
+                      });
+                      const data = (await res.json()) as { ok?: boolean; message?: string };
+                      pushToast(
+                        data.message || (res.ok ? "Email tes terkirim." : "Gagal kirim email tes."),
+                        res.ok ? "success" : "error",
+                      );
+                    } catch {
+                      pushToast("Gagal menghubungi server.", "error");
+                    } finally {
+                      setTestingEmail(false);
+                    }
+                  }}
+                >
+                  {testingEmail ? "Mengirim…" : "Kirim email tes"}
+                </button>
+                <span className="text-xs font-semibold text-black/55">
+                  Simpan dulu, baru tes — tombol ini memakai data yang sudah tersimpan.
+                </span>
+              </div>
+            </div>
           </div>
 
           <div className="admin-form-group space-y-3">

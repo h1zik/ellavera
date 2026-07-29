@@ -1,7 +1,8 @@
-import type { Content, Lead, Section, SiteSettings } from "@prisma/client";
+import type { Content, Lead, Section } from "@prisma/client";
 import { Prisma, SectionType } from "@prisma/client";
 import { unstable_cache } from "next/cache";
 import { prisma } from "@/lib/prisma";
+import { toAdminSiteSettings, type AdminSiteSettings } from "@/lib/admin-settings";
 import { defaultSettings } from "@/lib/default-data";
 import { DEFAULT_LEAD_FORM_FIELDS_JSON } from "@/lib/lead-form-config";
 import { syncDefaultSectionsFromDefaults } from "@/lib/sync-default-sections";
@@ -14,7 +15,8 @@ export const LANDING_CACHE_TAG = "landing";
 export const ADMIN_PAGE_CACHE_TAG = "admin-page";
 
 export type AdminPageData = {
-  settings: SiteSettings;
+  /** Tanpa password SMTP — data ini diserahkan ke komponen client. */
+  settings: AdminSiteSettings;
   sections: (Section & { contents: Content[] })[];
   leads: Lead[];
 };
@@ -78,9 +80,10 @@ const getAdminPageDataCached = unstable_cache(
       getAllSectionsForAdmin(),
       prisma.lead.findMany({ orderBy: { createdAt: "desc" }, take: 80 }),
     ]);
-    return { settings, sections, leads };
+    return { settings: toAdminSiteSettings(settings), sections, leads };
   },
-  ["admin-page-v2"],
+  // v3: bentuk settings berubah (password SMTP diredaksi) — jangan pakai cache lama.
+  ["admin-page-v3"],
   { tags: [ADMIN_PAGE_CACHE_TAG], revalidate: 120 },
 );
 

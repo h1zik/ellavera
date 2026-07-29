@@ -20,6 +20,10 @@ function supabaseImageHosts() {
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  // nodemailer pakai require dinamis — jangan di-bundle webpack, load dari node_modules.
+  experimental: {
+    serverComponentsExternalPackages: ["nodemailer"],
+  },
   images: {
     remotePatterns: [
       {

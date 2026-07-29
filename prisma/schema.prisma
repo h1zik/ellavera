@@ -71,12 +71,28 @@ model SiteSettings {
   id               String   @id @default("default")
   siteName         String   @default("Ellavera")
   tagline          String   @default("Maklon kosmetik buat Gen-Z & brand owner — without the drama.")
+  /** Teks kecil di atas logo header beranda. Kosongkan untuk menyembunyikan. */
+  headerEyebrow    String   @default("Maklon · Gen-Z · Unisex")
+  /** Teks kecil di atas judul hero. Kosongkan untuk menyembunyikan. */
+  heroKicker       String   @default("Retro · Playful · High-energy")
   brandPurpose     String   @db.Text
   primaryColor     String   @default("#26CCC2")
   secondaryColor   String   @default("#FAE3C7")
   accentColor      String   @default("#FFB76C")
   contactEmail     String?
   contactWhatsapp  String?
+  /** Tujuan notifikasi submit form. Boleh >1, pisahkan koma. Kosong = pakai contactEmail. */
+  leadNotifyEmail  String?
+  /** SMTP dari panel admin. Kalau smtpHost/smtpUser/password kosong → fallback ke env SMTP_*. */
+  smtpHost         String?
+  smtpPort         Int?
+  /** null = otomatis (true kalau port 465). */
+  smtpSecure       Boolean?
+  smtpUser         String?
+  /** Terenkripsi (AES-256-GCM) bila SMTP_CRYPT_KEY diset. Jangan pernah dikirim ke browser. */
+  smtpPasswordEnc  String?  @db.Text
+  /** Alamat pengirim, mis. "Ellavera <no-reply@ellavera.id>". Kosong = pakai smtpUser. */
+  smtpFrom         String?
   /** Alamat kantor / pabrik untuk section kontak */
   locationAddress  String?  @db.Text
   /** Tautan Google Maps atau embed link */

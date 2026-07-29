@@ -36,9 +36,11 @@ export default async function Home() {
 
           <header className="retro-header-panel z-10 flex w-full flex-col gap-5 md:flex-row md:items-center md:justify-between">
             <div className="relative z-10 max-w-xl space-y-3">
-              <p className="text-[10px] font-black uppercase tracking-[0.35em] text-black/50">
-                Maklon · Gen-Z · Unisex
-              </p>
+              {settings.headerEyebrow?.trim() ? (
+                <p className="text-[10px] font-black uppercase tracking-[0.35em] text-black/50">
+                  {settings.headerEyebrow.trim()}
+                </p>
+              ) : null}
               {settings.siteLogoUrl?.trim() ? (
                 // eslint-disable-next-line @next/next/no-img-element -- URL dari CMS (Supabase/dll.)
                 <img

@@ -3,7 +3,7 @@ import { SectionType, SiteSettings } from "@prisma/client";
 import { LeadForm } from "@/components/lead-form";
 import { WhatsAppLink } from "@/components/whatsapp-link";
 import { parseLeadFormFieldsJson } from "@/lib/lead-form-config";
-import { toWhatsAppHref } from "@/lib/contact-links";
+import { toWhatsAppHref, type PricelistLink } from "@/lib/contact-links";
 import { SectionWithContents } from "@/lib/types";
 import { byKey, firstValue, parseJson } from "@/lib/section-content";
 
@@ -31,12 +31,32 @@ function SectionIntro({
   );
 }
 
+function PricelistButton({ link, className }: { link: PricelistLink; className?: string }) {
+  return (
+    <a
+      href={link.url}
+      target="_blank"
+      rel="noopener noreferrer"
+      className={["retro-button-pricelist", className].filter(Boolean).join(" ")}
+    >
+      <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+        <path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z" />
+        <path d="M14 3v5h5M9 13h6M9 17h4" />
+      </svg>
+      {link.label}
+      <span className="sr-only"> (buka di tab baru)</span>
+    </a>
+  );
+}
+
 type Props = {
   sections: SectionWithContents[];
   settings: SiteSettings;
+  /** Tombol pricelist (dari section Hero) — dipakai di Hero & Kontak. */
+  pricelist: PricelistLink | null;
 };
 
-export function LandingSections({ sections, settings }: Props) {
+export function LandingSections({ sections, settings, pricelist }: Props) {
   return (
     <>
       {sections.map((section, index) => (
@@ -50,17 +70,21 @@ export function LandingSections({ sections, settings }: Props) {
             .filter(Boolean)
             .join(" ")}
         >
-          {renderSection(section, settings)}
+          {renderSection(section, settings, pricelist)}
         </section>
       ))}
     </>
   );
 }
 
-function renderSection(section: SectionWithContents, settings: SiteSettings) {
+function renderSection(
+  section: SectionWithContents,
+  settings: SiteSettings,
+  pricelist: PricelistLink | null,
+) {
   switch (section.type) {
     case SectionType.HERO:
-      return <HeroSection section={section} settings={settings} />;
+      return <HeroSection section={section} settings={settings} pricelist={pricelist} />;
     case SectionType.SERVICES:
       return <ServicesSection section={section} />;
     case SectionType.PROCESS:
@@ -78,7 +102,7 @@ function renderSection(section: SectionWithContents, settings: SiteSettings) {
     case SectionType.FAQ:
       return <FaqSection section={section} />;
     case SectionType.CONTACT:
-      return <ContactSection section={section} settings={settings} />;
+      return <ContactSection section={section} settings={settings} pricelist={pricelist} />;
     default:
       return null;
   }
@@ -87,9 +111,11 @@ function renderSection(section: SectionWithContents, settings: SiteSettings) {
 function HeroSection({
   section,
   settings,
+  pricelist,
 }: {
   section: SectionWithContents;
   settings: SiteSettings;
+  pricelist: PricelistLink | null;
 }) {
   const ctaPrimaryLabel = firstValue(section.contents, "cta_primary_label", "Konsultasi");
   const ctaPrimaryUrl = firstValue(section.contents, "cta_primary_url", "#contact");
@@ -118,6 +144,7 @@ function HeroSection({
           <a href={ctaSecondaryUrl} className="retro-button-alt">
             {ctaSecondaryLabel}
           </a>
+          {pricelist ? <PricelistButton link={pricelist} /> : null}
         </div>
         <p className="max-w-md pt-2 text-xs font-semibold uppercase tracking-[0.12em] text-black/40">
           Gratis konsultasi awal · Respon cepat di WhatsApp
@@ -234,10 +261,16 @@ function WhyUsSection({ section }: { section: SectionWithContents }) {
 
 type BrandLogo = { name: string; imageUrl: string };
 
+/**
+ * Portofolio klien = satu gambar landscape besar di atas latar putih.
+ * Gambar ("showcase") disiapkan tim Ellavera sendiri (semua logo klien dalam satu file).
+ * Fallback: logo satuan lama ditata di kanvas putih yang sama, atau kanvas kosong.
+ */
 function ClientPortfolioSection({ section }: { section: SectionWithContents }) {
-  const brands = byKey(section.contents, "brand").map((entry) =>
-    parseJson<BrandLogo>(entry.value, { name: "Brand", imageUrl: "" }),
-  );
+  const showcaseUrl = firstValue(section.contents, "showcase", "").trim();
+  const brands = byKey(section.contents, "brand")
+    .map((entry) => parseJson<BrandLogo>(entry.value, { name: "", imageUrl: "" }))
+    .filter((brand) => brand.imageUrl);
 
   return (
     <div className="space-y-5">
@@ -246,29 +279,37 @@ function ClientPortfolioSection({ section }: { section: SectionWithContents }) {
         title={section.title}
         description={section.description}
       />
-      <ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        {brands.map((brand, idx) =>
-          brand.imageUrl ? (
-            <li
-              key={`${brand.name}-${idx}`}
-              className="retro-item flex flex-col items-center justify-center gap-3 bg-white p-6 grayscale transition-[filter,transform] hover:grayscale-0 hover:-rotate-1"
-            >
-              {/* eslint-disable-next-line @next/next/no-img-element -- URL logo dari admin */}
-              <img
-                src={brand.imageUrl}
-                alt={brand.name ? `Logo ${brand.name}` : "Logo klien"}
-                className="h-14 w-full max-w-[220px] object-contain"
-                loading="lazy"
-              />
-              {brand.name ? (
-                <p className="text-center text-xs font-black uppercase tracking-widest text-black/60">
-                  {brand.name}
-                </p>
-              ) : null}
-            </li>
-          ) : null,
+      <figure className="client-showcase">
+        {showcaseUrl ? (
+          // eslint-disable-next-line @next/next/no-img-element -- URL bebas dari admin, rasio asli dipertahankan
+          <img
+            src={showcaseUrl}
+            alt={section.title ? `Logo klien Ellavera — ${section.title}` : "Logo klien Ellavera"}
+            className="block h-auto w-full"
+            width={2400}
+            height={1000}
+            loading="lazy"
+            decoding="async"
+          />
+        ) : brands.length > 0 ? (
+          <ul className="client-showcase-fallback">
+            {brands.map((brand, idx) => (
+              <li key={`${brand.imageUrl}-${idx}`}>
+                {/* eslint-disable-next-line @next/next/no-img-element -- URL logo dari admin */}
+                <img
+                  src={brand.imageUrl}
+                  alt={brand.name ? `Logo ${brand.name}` : "Logo klien"}
+                  className="h-12 w-auto max-w-[180px] object-contain md:h-16 md:max-w-[220px]"
+                  loading="lazy"
+                  decoding="async"
+                />
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <div className="aspect-[12/5] w-full" aria-hidden />
         )}
-      </ul>
+      </figure>
     </div>
   );
 }
@@ -408,9 +449,11 @@ function FaqSection({ section }: { section: SectionWithContents }) {
 function ContactSection({
   section,
   settings,
+  pricelist,
 }: {
   section: SectionWithContents;
   settings: SiteSettings;
+  pricelist: PricelistLink | null;
 }) {
   const wa = toWhatsAppHref(settings.contactWhatsapp);
   const leadFields = parseLeadFormFieldsJson(settings.leadFormFieldsJson);
@@ -461,6 +504,7 @@ function ContactSection({
                 Buka di Maps
               </a>
             ) : null}
+            {pricelist ? <PricelistButton link={pricelist} className="mt-1 w-fit" /> : null}
           </div>
         </div>
         <div className="retro-lead-panel space-y-4">

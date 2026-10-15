@@ -13,8 +13,12 @@ import { ImageUploadField } from "@/components/admin/image-upload-field";
 type Props = {
   sectionType: SectionType;
   content: Content;
+  /** Posisi 1-based untuk ditampilkan, mis. "Item 2 dari 5". */
+  position: number;
+  total: number;
   onPatch: (patch: Partial<Content>) => void;
   onRemove: () => void;
+  onMove: (direction: -1 | 1) => void;
 };
 
 function buildKindOptions(sectionType: SectionType, content: Content): KindOption[] {
@@ -37,7 +41,15 @@ function buildKindOptions(sectionType: SectionType, content: Content): KindOptio
     : [{ key: "text", label: "Teks", valueType: "TEXT" }];
 }
 
-export function ContentBlockEditor({ sectionType, content, onPatch, onRemove }: Props) {
+export function ContentBlockEditor({
+  sectionType,
+  content,
+  position,
+  total,
+  onPatch,
+  onRemove,
+  onMove,
+}: Props) {
   const kindOptions = buildKindOptions(sectionType, content);
 
   function handleKindChange(newKey: string) {
@@ -56,15 +68,59 @@ export function ContentBlockEditor({ sectionType, content, onPatch, onRemove }: 
     labelForKey(sectionType, content.key) ?? `Item: ${content.key || "baru"}`;
 
   return (
-    <div className="space-y-4 rounded-xl border-2 border-black/10 bg-white/90 p-4 shadow-sm">
-      <div className="flex flex-wrap items-start justify-between gap-2">
-        <div className="space-y-1">
-          <p className="text-xs font-black uppercase tracking-wider text-black/45">
+    <div className="admin-item">
+      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-black/10 pb-3">
+        <div className="flex min-w-0 items-center gap-2">
+          <span className="admin-item-pos" aria-hidden>
+            {position}
+          </span>
+          <p className="truncate text-sm font-black text-black/80">
             {friendlyLabel}
+            <span className="sr-only">
+              , item {position} dari {total}
+            </span>
           </p>
-          <label className="block text-sm font-bold text-black/80">Jenis konten</label>
+        </div>
+        <div className="flex items-center gap-1">
+          <button
+            type="button"
+            className="admin-icon-btn"
+            onClick={() => onMove(-1)}
+            disabled={position === 1}
+            aria-label="Pindah ke atas"
+            title="Pindah ke atas"
+          >
+            ↑
+          </button>
+          <button
+            type="button"
+            className="admin-icon-btn"
+            onClick={() => onMove(1)}
+            disabled={position === total}
+            aria-label="Pindah ke bawah"
+            title="Pindah ke bawah"
+          >
+            ↓
+          </button>
+          <button
+            type="button"
+            className="admin-icon-btn admin-icon-btn--danger"
+            onClick={() => {
+              if (confirm(`Hapus "${friendlyLabel}" ini? Berlaku setelah disimpan.`)) onRemove();
+            }}
+            aria-label="Hapus item"
+            title="Hapus item"
+          >
+            ✕
+          </button>
+        </div>
+      </div>
+
+      {kindOptions.length > 1 ? (
+        <label className="block max-w-md text-xs font-bold text-black/70">
+          Jenis konten
           <select
-            className="retro-input max-w-md text-sm"
+            className="retro-input mt-1 py-2 text-sm"
             value={content.key}
             onChange={(e) => handleKindChange(e.target.value)}
           >
@@ -74,33 +130,10 @@ export function ContentBlockEditor({ sectionType, content, onPatch, onRemove }: 
               </option>
             ))}
           </select>
-          <p className="text-[11px] text-black/45">
-            Urutan angka di bawah menentukan posisi di halaman (kecil = lebih atas).
-          </p>
-        </div>
-        <button
-          type="button"
-          className="text-[11px] font-bold uppercase text-red-600 underline"
-          onClick={onRemove}
-        >
-          Hapus item ini
-        </button>
-      </div>
-
-      <div className="flex flex-wrap items-center gap-3 border-t border-black/10 pt-3">
-        <label className="flex items-center gap-2 text-sm font-semibold">
-          Urutan tampil
-          <input
-            className="retro-input w-24 py-2 text-sm"
-            type="number"
-            value={content.sortOrder}
-            onChange={(e) => onPatch({ sortOrder: Number(e.target.value) })}
-            min={0}
-          />
         </label>
-      </div>
+      ) : null}
 
-      <div className="border-t border-black/10 pt-4">{renderValueEditor(content, onPatch)}</div>
+      <div>{renderValueEditor(content, onPatch)}</div>
     </div>
   );
 }
@@ -275,6 +308,17 @@ function renderValueEditor(content: Content, onPatch: (patch: Partial<Content>) 
     );
   }
 
+  if (content.valueType === "IMAGE_URL") {
+    return (
+      <ImageUploadField
+        label="Gambar"
+        currentUrl={content.value}
+        onUrlChange={(url) => onPatch({ value: url })}
+        widePreview
+      />
+    );
+  }
+
   if (content.valueType === "URL" || k.includes("_url")) {
     return (
       <div>
@@ -286,6 +330,12 @@ function renderValueEditor(content: Content, onPatch: (patch: Partial<Content>) 
           onChange={(e) => onPatch({ value: e.target.value })}
           placeholder="https://… atau #section"
         />
+        {k === "cta_pricelist_url" ? (
+          <p className="mt-1 text-xs text-black/55">
+            Tampil di Hero & Kontak, dibuka di tab baru. Isi tanda &quot;-&quot; untuk
+            menyembunyikan tombol.
+          </p>
+        ) : null}
       </div>
     );
   }

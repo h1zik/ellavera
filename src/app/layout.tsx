@@ -2,17 +2,13 @@ import type { Metadata } from "next";
 import localFont from "next/font/local";
 import "./globals.css";
 import { MetaPixel } from "@/components/meta-pixel";
-import { prisma } from "@/lib/prisma";
+import { getHeadSettings } from "@/lib/data";
 
 const geistSans = localFont({
   src: "./fonts/GeistVF.woff",
   variable: "--font-geist-sans",
   weight: "100 900",
-});
-const geistMono = localFont({
-  src: "./fonts/GeistMonoVF.woff",
-  variable: "--font-geist-mono",
-  weight: "100 900",
+  display: "swap",
 });
 
 /** Tebak MIME untuk <link type="…"> — membantu browser/CDN. */
@@ -27,10 +23,8 @@ function iconMimeFromUrl(url: string): string | undefined {
 }
 
 export async function generateMetadata(): Promise<Metadata> {
-  /** Tanpa unstable_cache: favicon/title harus langsung ikut DB setelah simpan di admin (bukan cache 300s). */
-  const settings = await prisma.siteSettings.findUnique({
-    where: { id: "default" },
-  });
+  /** Cache ditag "landing" — langsung ter-invalidate saat pengaturan disimpan di admin. */
+  const settings = await getHeadSettings();
 
   const title =
     settings?.seoTitle ??
@@ -65,6 +59,7 @@ export async function generateMetadata(): Promise<Metadata> {
       description,
       type: "website",
       locale: "id_ID",
+      ...(settings?.siteName ? { siteName: settings.siteName } : {}),
     },
   };
 }
@@ -74,16 +69,13 @@ export default async function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  /** Langsung dari DB (tanpa cache) agar Pixel ID ikut berubah segera setelah disimpan di admin. */
-  const settings = await prisma.siteSettings.findUnique({
-    where: { id: "default" },
-    select: { metaPixelId: true },
-  });
+  /** Sama dengan generateMetadata — satu entri cache, invalidasi via tag "landing". */
+  const settings = await getHeadSettings();
 
   return (
     <html lang="id">
       <body
-        className={`${geistSans.variable} ${geistMono.variable} overflow-x-hidden antialiased`}
+        className={`${geistSans.variable} overflow-x-hidden antialiased`}
       >
         <MetaPixel pixelId={settings?.metaPixelId} />
         {children}

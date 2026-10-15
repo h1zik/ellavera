@@ -63,6 +63,13 @@ export const defaultSections: SectionSeed[] = [
       { key: "cta_primary_url", value: "#contact", valueType: ContentValueType.URL, sortOrder: 1 },
       { key: "cta_secondary_label", value: "Lihat layanan", sortOrder: 2 },
       { key: "cta_secondary_url", value: "#services", valueType: ContentValueType.URL, sortOrder: 3 },
+      { key: "cta_pricelist_label", value: "Lihat pricelist white label", sortOrder: 4 },
+      {
+        key: "cta_pricelist_url",
+        value: "https://bit.ly/Price_List_Ellavera",
+        valueType: ContentValueType.URL,
+        sortOrder: 5,
+      },
     ],
   },
   {

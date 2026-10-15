@@ -55,54 +55,80 @@ export function LeadForm({ fields }: Props) {
 
   return (
     <form onSubmit={onSubmit} className="grid gap-3">
-      {fields.map((field) =>
-        field.type === "textarea" ? (
-          <textarea
-            key={field.id}
-            className="retro-input min-h-[100px]"
-            placeholder={field.placeholder || field.label}
-            value={state[field.id] ?? ""}
-            onChange={(e) =>
-              setState((prev) => ({ ...prev, [field.id]: e.target.value }))
-            }
-            required={field.required}
-            maxLength={field.maxLength}
-            minLength={field.required ? field.minLength : undefined}
-          />
-        ) : (
-          <input
-            key={field.id}
-            className="retro-input"
-            type={field.type === "email" ? "email" : field.type === "tel" ? "tel" : "text"}
-            placeholder={field.placeholder || field.label}
-            value={state[field.id] ?? ""}
-            onChange={(e) =>
-              setState((prev) => ({ ...prev, [field.id]: e.target.value }))
-            }
-            required={field.required}
-            maxLength={field.maxLength}
-            minLength={field.required ? field.minLength : undefined}
-            inputMode={field.type === "tel" ? "tel" : undefined}
-            autoComplete={
-              field.type === "email"
-                ? "email"
-                : field.id === "fullName"
-                  ? "name"
-                  : field.type === "tel"
-                    ? "tel"
-                    : "on"
-            }
-          />
-        ),
-      )}
-      <button className="retro-button" disabled={status === "loading"}>
-        {status === "loading" ? "Mengirim..." : "Kirim Brief"}
+      {fields.map((field) => (
+        <label key={field.id} className="block">
+          <span className="retro-field-label">
+            {field.label}
+            {field.required ? null : (
+              <span className="font-medium text-black/45"> (opsional)</span>
+            )}
+          </span>
+          {renderControl(field)}
+        </label>
+      ))}
+      <button
+        type="submit"
+        className="retro-button mt-1 disabled:opacity-60"
+        disabled={status === "loading"}
+      >
+        {status === "loading" ? "Mengirim…" : "Kirim brief"}
       </button>
       <div className="min-h-[3.25rem]" aria-live="polite">
         {feedback ? (
-          <p className={status === "success" ? "text-green-700" : "text-red-700"}>{feedback}</p>
+          <p
+            role={status === "error" ? "alert" : undefined}
+            className={[
+              "rounded-xl border-2 px-3 py-2 text-sm font-semibold",
+              status === "success"
+                ? "border-green-700/40 bg-green-50 text-green-800"
+                : "border-red-700/40 bg-red-50 text-red-800",
+            ].join(" ")}
+          >
+            {feedback}
+          </p>
         ) : null}
       </div>
     </form>
   );
+
+  function renderControl(field: LeadFormField) {
+    return field.type === "textarea" ? (
+      <textarea
+        name={field.id}
+        className="retro-input min-h-[100px]"
+        placeholder={field.placeholder || field.label}
+        value={state[field.id] ?? ""}
+        onChange={(e) =>
+          setState((prev) => ({ ...prev, [field.id]: e.target.value }))
+        }
+        required={field.required}
+        maxLength={field.maxLength}
+        minLength={field.required ? field.minLength : undefined}
+      />
+        ) : (
+      <input
+        name={field.id}
+        className="retro-input"
+        type={field.type === "email" ? "email" : field.type === "tel" ? "tel" : "text"}
+        placeholder={field.placeholder || field.label}
+        value={state[field.id] ?? ""}
+        onChange={(e) =>
+          setState((prev) => ({ ...prev, [field.id]: e.target.value }))
+        }
+        required={field.required}
+        maxLength={field.maxLength}
+        minLength={field.required ? field.minLength : undefined}
+        inputMode={field.type === "tel" ? "tel" : undefined}
+        autoComplete={
+          field.type === "email"
+            ? "email"
+            : field.id === "fullName"
+              ? "name"
+              : field.type === "tel"
+                ? "tel"
+                : "on"
+        }
+      />
+        );
+  }
 }

@@ -52,16 +52,16 @@ export default async function AdminLoginPage({
               {siteName}
             </p>
           )}
-          <p className="admin-eyebrow mx-auto mt-4 justify-center text-[10px]">Masuk</p>
+          <h1 className="mt-4 text-lg font-black text-[var(--retro-black)]">Masuk ke panel admin</h1>
           {tagline ? (
             <p className="mt-3 text-sm font-semibold leading-snug text-black/55">{tagline}</p>
           ) : null}
         </div>
         <AdminLoginForm redirectAfterLogin={redirectAfterLogin} />
-        <p className="mt-6 text-center text-xs text-black/45">
-          Kredensial dari env{" "}
-          <code className="rounded bg-black/5 px-1 py-0.5">ADMIN_USER</code> /{" "}
-          <code className="rounded bg-black/5 px-1 py-0.5">ADMIN_PASSWORD</code>
+        <p className="mt-6 text-center text-xs">
+          <a href="/" className="font-semibold text-black/50 underline underline-offset-4 hover:text-black">
+            Kembali ke situs
+          </a>
         </p>
       </div>
     </main>

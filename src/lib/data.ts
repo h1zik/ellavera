@@ -64,6 +64,28 @@ export async function getLandingData(): Promise<LandingData> {
   return getLandingDataCached();
 }
 
+/**
+ * Field settings untuk <head> (SEO, favicon, Pixel) — dipakai `generateMetadata` & root layout.
+ * Ditag LANDING_CACHE_TAG: simpan pengaturan di admin langsung meng-invalidate, jadi tetap
+ * "langsung ikut DB" tanpa 2 query ekstra di setiap request.
+ */
+export const getHeadSettings = unstable_cache(
+  async () =>
+    prisma.siteSettings.findUnique({
+      where: { id: "default" },
+      select: {
+        seoTitle: true,
+        seoDescription: true,
+        seoKeywords: true,
+        faviconUrl: true,
+        metaPixelId: true,
+        siteName: true,
+      },
+    }),
+  ["head-settings-v1"],
+  { tags: [LANDING_CACHE_TAG], revalidate: 300 },
+);
+
 /** Panggil `ensureSeedData()` dulu (mis. dari `getAdminPageData`). */
 export async function getAllSectionsForAdmin() {
   return prisma.section.findMany({

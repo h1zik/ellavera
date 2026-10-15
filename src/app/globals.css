@@ -46,7 +46,8 @@ body {
     100% 100%,
     100% 100%,
     24px 24px;
-  background-attachment: fixed;
+  /* Sengaja tanpa `background-attachment: fixed` — memaksa repaint full-screen tiap scroll
+     (patah-patah di HP) dan diabaikan iOS Safari. */
   font-family: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
   letter-spacing: -0.01em;
 }
@@ -131,6 +132,84 @@ body {
     transform: translate(-2px, -2px);
     box-shadow: 5px 5px 0 0 var(--retro-black);
     background: color-mix(in srgb, var(--brand-primary) 35%, white);
+  }
+
+  /* Bar navigasi ringkas (muncul setelah header lewat) */
+  .home-sticky-bar {
+    @apply fixed inset-x-0 top-0 z-40 border-b-[3px] border-[var(--retro-black)] py-2;
+    background: color-mix(in srgb, var(--brand-secondary) 92%, white);
+    transform: translateY(-110%);
+    visibility: hidden;
+    transition:
+      transform 0.25s ease,
+      visibility 0s linear 0.25s;
+  }
+
+  .home-sticky-bar[data-visible="true"] {
+    transform: translateY(0);
+    visibility: visible;
+    transition: transform 0.25s ease;
+  }
+
+  .home-sticky-nav {
+    @apply flex min-w-0 flex-1 gap-1.5 overflow-x-auto md:justify-end;
+    scrollbar-width: none;
+  }
+
+  .home-sticky-nav::-webkit-scrollbar {
+    display: none;
+  }
+
+  .home-sticky-link {
+    @apply retro-focus shrink-0 rounded-full border-2 border-transparent px-3 py-1.5 text-xs font-bold text-black/70 transition-colors hover:border-[var(--retro-black)] hover:text-black;
+  }
+
+  /* Section yang sedang dibaca (scroll-spy di HomeEnhancements) */
+  .home-sticky-link[aria-current="true"] {
+    @apply border-[var(--retro-black)] text-[var(--retro-black)];
+    background: var(--brand-primary);
+  }
+
+  /* Nav header: satu baris yang bisa digeser di HP, wrap di desktop */
+  .home-nav {
+    @apply relative z-10 -mx-5 flex gap-2 overflow-x-auto px-5 pb-2 pt-1 md:mx-0 md:max-w-[58%] md:flex-wrap md:justify-end md:overflow-visible md:px-0 md:pb-0;
+    scroll-snap-type: x proximity;
+    scrollbar-width: none;
+  }
+
+  .home-nav::-webkit-scrollbar {
+    display: none;
+  }
+
+  .home-nav .retro-nav-link {
+    @apply shrink-0;
+    scroll-snap-align: start;
+  }
+
+  /* ═══ Portofolio klien — satu gambar landscape di kanvas putih ═══ */
+  .client-showcase {
+    @apply overflow-hidden rounded-2xl border-[3px] border-[var(--retro-black)] bg-white;
+    box-shadow: var(--retro-shadow-shift) var(--retro-shadow-shift) 0 0 var(--retro-black);
+  }
+
+  .client-showcase-fallback {
+    @apply flex flex-wrap items-center justify-center gap-x-10 gap-y-8 px-6 py-10 md:gap-x-16 md:px-12 md:py-14;
+  }
+
+  /* ═══ Tombol WhatsApp mengambang ═══ */
+  .home-wa-float {
+    @apply retro-focus fixed bottom-6 left-4 z-50 inline-flex h-12 items-center gap-2 rounded-full border-[3px] border-[var(--retro-black)] bg-[#25D366] px-4 text-sm font-black text-[var(--retro-black)] transition-transform duration-200 md:bottom-8 md:left-6;
+    box-shadow: 4px 4px 0 0 var(--retro-black);
+  }
+
+  .home-wa-float:hover {
+    transform: translate(-2px, -2px);
+    box-shadow: 6px 6px 0 0 var(--retro-black);
+  }
+
+  /* ═══ Label field form lead ═══ */
+  .retro-field-label {
+    @apply mb-1 block text-xs font-bold text-black/70;
   }
 
   .retro-footer-panel {
@@ -258,6 +337,27 @@ body {
   .retro-button-alt:active {
     transform: translate(1px, 1px);
     box-shadow: 3px 3px 0 0 var(--retro-black);
+  }
+
+  /* Tombol pricelist — hitam di antara tombol teal/oranye supaya langsung terlihat */
+  .retro-button-pricelist {
+    @apply retro-focus inline-flex items-center justify-center gap-2.5 rounded-xl border-2 border-[var(--retro-black)] bg-[var(--retro-black)] px-6 py-3.5 text-sm font-black uppercase tracking-wide text-white transition-transform duration-200;
+    box-shadow: 5px 5px 0 0 var(--brand-accent);
+  }
+
+  .retro-button-pricelist:hover {
+    transform: translate(-3px, -3px);
+    box-shadow: 8px 8px 0 0 var(--brand-primary);
+  }
+
+  .retro-button-pricelist:active {
+    transform: translate(1px, 1px);
+    box-shadow: 3px 3px 0 0 var(--brand-accent);
+  }
+
+  .retro-button-pricelist svg {
+    @apply shrink-0;
+    color: var(--brand-accent);
   }
 
   .section-title {
@@ -449,7 +549,7 @@ body {
   }
 
   .admin-content-card {
-    @apply relative overflow-hidden rounded-3xl border-[3px] border-[var(--retro-black)] p-6 md:p-8;
+    @apply relative overflow-clip rounded-3xl border-[3px] border-[var(--retro-black)] p-6 md:p-8;
     background: linear-gradient(
       165deg,
       #fffef9 0%,
@@ -506,7 +606,7 @@ body {
   }
 
   .admin-sticky-actions {
-    @apply sticky bottom-0 z-20 -mx-6 mt-8 border-t-2 border-[var(--retro-black)] py-4 backdrop-blur-md md:-mx-8;
+    @apply sticky bottom-0 z-20 -mx-6 -mb-6 mt-8 rounded-b-[1.3rem] border-t-2 border-[var(--retro-black)] py-4 backdrop-blur-md md:-mx-8 md:-mb-8;
     background: color-mix(
       in srgb,
       color-mix(in srgb, #fffef9 92%, var(--brand-secondary)) 95%,
@@ -528,6 +628,145 @@ body {
     box-shadow: 6px 6px 0 0 rgba(185, 28, 28, 0.35);
   }
 
+  .admin-label {
+    @apply block text-xs font-bold text-black/70;
+  }
+
+  .admin-input-prefix {
+    @apply inline-flex h-full items-center self-stretch rounded-l-xl border-2 border-r-0 border-black/15 bg-black/[0.04] px-3 text-sm font-bold text-black/50;
+  }
+
+  .admin-empty {
+    @apply rounded-2xl border-2 border-dashed border-black/20 bg-white/50 px-4 py-6 text-center text-sm font-semibold text-black/55;
+  }
+
+  /* Item konten di editor section */
+  .admin-item {
+    @apply space-y-4 rounded-2xl border-2 border-black/[0.12] bg-white p-4 md:p-5;
+    box-shadow: 4px 4px 0 0 rgba(13, 13, 13, 0.06);
+  }
+
+  .admin-item-pos {
+    @apply inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border-2 border-[var(--retro-black)] text-xs font-black;
+    background: var(--brand-primary);
+  }
+
+  .admin-icon-btn {
+    @apply retro-focus inline-flex h-8 w-8 items-center justify-center rounded-lg border-2 border-black/15 bg-white text-sm font-black text-black/70 transition hover:border-[var(--retro-black)] hover:text-black disabled:cursor-not-allowed disabled:opacity-30 disabled:hover:border-black/15;
+  }
+
+  .admin-icon-btn--danger {
+    @apply text-red-700 hover:border-red-700 hover:bg-red-50 hover:text-red-800;
+  }
+
+  /* Upload gambar */
+  .admin-dropzone {
+    @apply flex cursor-pointer flex-wrap items-center gap-3 rounded-xl border-2 border-dashed border-black/20 bg-white/70 px-3 py-3 transition;
+  }
+
+  .admin-dropzone:hover,
+  .admin-dropzone:focus-within,
+  .admin-dropzone--over {
+    border-color: var(--brand-primary);
+    background: color-mix(in srgb, var(--brand-primary) 10%, white);
+  }
+
+  .admin-dropzone:focus-within {
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--brand-primary) 40%, transparent);
+  }
+
+  /* Papan catur untuk preview logo transparan */
+  .admin-checker {
+    background-color: #fff;
+    background-image: conic-gradient(#0000000d 25%, transparent 0 50%, #0000000d 0 75%, transparent 0);
+    background-size: 16px 16px;
+  }
+
+  /* Panel gambar logo klien (portofolio) */
+  .admin-feature-panel {
+    @apply rounded-2xl border-[3px] border-[var(--retro-black)] bg-white p-5 md:p-6;
+    box-shadow: 6px 6px 0 0 var(--brand-accent);
+  }
+
+  .admin-showcase-empty {
+    @apply flex aspect-[12/5] w-full items-center justify-center rounded-xl border-2 border-dashed border-black/15 bg-white p-4 text-center text-xs font-semibold text-black/45;
+  }
+
+  /* Switch tampil / sembunyi */
+  .admin-switch {
+    @apply relative inline-flex cursor-pointer select-none items-center gap-2.5;
+  }
+
+  .admin-switch input {
+    @apply sr-only;
+  }
+
+  .admin-switch-track {
+    @apply relative inline-block h-6 w-11 shrink-0 rounded-full border-2 border-[var(--retro-black)] bg-black/10 transition-colors;
+  }
+
+  .admin-switch-track::after {
+    content: "";
+    @apply absolute left-0.5 top-0.5 h-4 w-4 rounded-full border-2 border-[var(--retro-black)] bg-white transition-transform;
+  }
+
+  .admin-switch input:checked + .admin-switch-track {
+    background: var(--brand-primary);
+  }
+
+  .admin-switch input:checked + .admin-switch-track::after {
+    transform: translateX(1.25rem);
+  }
+
+  .admin-switch input:focus-visible + .admin-switch-track {
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--brand-primary) 45%, transparent);
+  }
+
+  /* Kartu di daftar section */
+  .admin-hub-card {
+    @apply overflow-hidden rounded-2xl border-2 border-black/[0.12] bg-white/90 transition;
+    box-shadow: 4px 4px 0 0 rgba(13, 13, 13, 0.06);
+  }
+
+  .admin-hub-card:hover,
+  .admin-hub-card:focus-within {
+    border-color: var(--retro-black);
+    box-shadow: 4px 4px 0 0 var(--brand-primary);
+  }
+
+  .admin-hub-card > button:focus-visible {
+    @apply outline-none;
+    background: color-mix(in srgb, var(--brand-primary) 10%, white);
+  }
+
+  /* Penanda status kecil */
+  .admin-dot {
+    @apply inline-block h-2.5 w-2.5 shrink-0 rounded-full bg-black/20;
+  }
+
+  .admin-dot--dirty {
+    background: #f59e0b;
+    box-shadow: 0 0 0 2px #fff, 0 0 0 3px #b45309;
+  }
+
+  .admin-count {
+    @apply rounded-full border-2 border-black/15 bg-white px-2 text-[11px] font-black text-black/60;
+  }
+
+  .admin-kbd {
+    @apply ml-1 rounded-md border border-b-2 border-black/20 bg-white px-1.5 py-0.5 font-mono text-[10px] font-bold text-black/55;
+  }
+
+  /* Lompat ke grup pengaturan */
+  .admin-jump {
+    @apply -mx-1 mt-4 flex gap-2 overflow-x-auto px-1 pb-1;
+    scrollbar-width: none;
+  }
+
+  .admin-jump-link {
+    @apply retro-focus shrink-0 rounded-full border-2 border-black/15 bg-white/80 px-3 py-1.5 text-xs font-bold text-black/70 transition hover:border-[var(--retro-black)] hover:text-black;
+  }
+
   /* Skip link */
   .skip-to-main {
     @apply absolute left-4 top-4 z-[300] -translate-y-20 rounded-xl border-2 border-[var(--retro-black)] bg-[var(--brand-primary)] px-4 py-2 text-sm font-black uppercase tracking-wide text-[var(--retro-black)] opacity-0 transition focus:translate-y-0 focus:opacity-100;
@@ -547,12 +786,26 @@ body {
     .retro-nav-link:hover,
     .retro-button:hover,
     .retro-button-alt:hover,
+    .retro-button-pricelist:hover,
     .retro-item:hover,
     .retro-item-playful:hover {
       transform: none;
     }
 
     .home-back-top {
+      transition: none;
+    }
+
+    .home-wa-float:hover {
+      transform: none;
+    }
+
+    .admin-switch-track::after {
+      transition: none;
+    }
+
+    .home-sticky-bar,
+    .home-sticky-bar[data-visible="true"] {
       transition: none;
     }
   }

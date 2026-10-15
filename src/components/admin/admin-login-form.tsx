@@ -13,6 +13,7 @@ export function AdminLoginForm({ redirectAfterLogin }: Props) {
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -26,11 +27,13 @@ export function AdminLoginForm({ redirectAfterLogin }: Props) {
       });
       if (!res.ok) {
         const data = (await res.json().catch(() => ({}))) as { error?: string };
-        setError(data.error ?? "Gagal masuk");
+        setError(data.error ?? "Username atau password salah. Cek lagi lalu coba masuk.");
         return;
       }
       router.replace(redirectAfterLogin);
       router.refresh();
+    } catch {
+      setError("Tidak bisa menghubungi server. Cek koneksi lalu coba lagi.");
     } finally {
       setPending(false);
     }
@@ -52,6 +55,7 @@ export function AdminLoginForm({ redirectAfterLogin }: Props) {
           className="retro-input mt-1"
           name="username"
           autoComplete="username"
+          autoFocus
           value={username}
           onChange={(e) => setUsername(e.target.value)}
           required
@@ -59,15 +63,25 @@ export function AdminLoginForm({ redirectAfterLogin }: Props) {
       </label>
       <label className="block text-sm font-black text-black/80">
         Password
-        <input
-          className="retro-input mt-1"
-          type="password"
-          name="password"
-          autoComplete="current-password"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          required
-        />
+        <span className="mt-1 flex">
+          <input
+            className="retro-input rounded-r-none"
+            type={showPassword ? "text" : "password"}
+            name="password"
+            autoComplete="current-password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            required
+          />
+          <button
+            type="button"
+            className="retro-focus shrink-0 rounded-r-xl border-2 border-l-0 border-black/15 bg-white px-3 text-xs font-bold text-black/60 hover:text-black"
+            onClick={() => setShowPassword((v) => !v)}
+            aria-pressed={showPassword}
+          >
+            {showPassword ? "Sembunyikan" : "Lihat"}
+          </button>
+        </span>
       </label>
       <button
         type="submit"

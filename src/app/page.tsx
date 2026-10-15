@@ -2,6 +2,12 @@ import type { CSSProperties } from "react";
 import { SectionType } from "@prisma/client";
 import { HomeEnhancements } from "@/components/home-enhancements";
 import { LandingSections } from "@/components/landing-sections";
+import {
+  DEFAULT_PRICELIST_LABEL,
+  DEFAULT_PRICELIST_URL,
+  toWhatsAppHref,
+} from "@/lib/contact-links";
+import { firstValue } from "@/lib/section-content";
 import { getLandingData } from "@/lib/data";
 
 export default async function Home() {
@@ -10,21 +16,61 @@ export default async function Home() {
   const sectionsAfterHero = heroSection
     ? sections.filter((s) => s.id !== heroSection.id)
     : sections;
+  // Dari item Hero "Teks/Link tombol pricelist"; kalau belum diisi pakai link bawaan.
+  // Isi link dengan "-" untuk menyembunyikan tombol.
+  const pricelistUrl = heroSection
+    ? firstValue(heroSection.contents, "cta_pricelist_url", DEFAULT_PRICELIST_URL).trim()
+    : DEFAULT_PRICELIST_URL;
+  const pricelist =
+    pricelistUrl && pricelistUrl !== "-"
+      ? {
+          url: pricelistUrl,
+          label:
+            (heroSection &&
+              firstValue(heroSection.contents, "cta_pricelist_label", "").trim()) ||
+            DEFAULT_PRICELIST_LABEL,
+        }
+      : null;
   return (
-    <div className="retro-shell">
+    <div
+      className="retro-shell"
+      style={
+        {
+          "--brand-primary": settings.primaryColor,
+          "--brand-secondary": settings.secondaryColor,
+          "--brand-accent": settings.accentColor,
+        } as CSSProperties
+      }
+    >
       <a className="skip-to-main" href="#main-content">
         Langsung ke isi
       </a>
-      <HomeEnhancements />
+      <HomeEnhancements
+        sectionSlugs={sections.map((s) => s.slug)}
+        whatsappHref={settings.contactWhatsapp ? toWhatsAppHref(settings.contactWhatsapp) : null}
+      />
+      {/* Bar ringkas yang muncul setelah header lewat — HomeEnhancements mengatur tampil & link aktif. */}
+      <div className="home-sticky-bar" data-sticky-bar>
+        <div className="mx-auto flex max-w-6xl items-center gap-3 px-4 md:px-6">
+          <a href="#main-content" className="hidden shrink-0 text-base font-black tracking-tight md:block">
+            {settings.siteName}
+          </a>
+          <nav className="home-sticky-nav" aria-label="Navigasi cepat" data-scrollspy-nav>
+            {sections.map((section) => (
+              <a
+                key={section.id}
+                href={`#${section.slug}`}
+                className="home-sticky-link"
+                data-spy={section.slug}
+              >
+                {section.name}
+              </a>
+            ))}
+          </nav>
+        </div>
+      </div>
       <main
         id="main-content"
-        style={
-          {
-            "--brand-primary": settings.primaryColor,
-            "--brand-secondary": settings.secondaryColor,
-            "--brand-accent": settings.accentColor,
-          } as CSSProperties
-        }
         className="min-h-screen bg-transparent px-4 pb-12 pt-6 md:px-6 md:pb-12 md:pt-6"
       >
         <div className="mx-auto flex max-w-6xl flex-col gap-8 md:gap-12">
@@ -59,16 +105,9 @@ export default async function Home() {
                 {settings.tagline}
               </p>
             </div>
-            <nav
-              className="relative z-10 flex max-w-2xl flex-wrap justify-end gap-2 md:max-w-[58%]"
-              aria-label="Navigasi section"
-            >
+            <nav className="home-nav" aria-label="Navigasi section">
               {sections.map((section) => (
-                <a
-                  key={section.id}
-                  href={`#${section.slug}`}
-                  className="retro-nav-link"
-                >
+                <a key={section.id} href={`#${section.slug}`} className="retro-nav-link">
                   {section.name}
                 </a>
               ))}
@@ -77,11 +116,11 @@ export default async function Home() {
 
           <div className="flex flex-col gap-8 md:gap-10">
             {heroSection ? (
-              <LandingSections sections={[heroSection]} settings={settings} />
+              <LandingSections sections={[heroSection]} settings={settings} pricelist={pricelist} />
             ) : null}
 
             {sectionsAfterHero.length > 0 ? (
-              <LandingSections sections={sectionsAfterHero} settings={settings} />
+              <LandingSections sections={sectionsAfterHero} settings={settings} pricelist={pricelist} />
             ) : null}
           </div>
 

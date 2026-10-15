@@ -33,12 +33,21 @@ export default async function AdminPage() {
       className="admin-app-root min-h-screen bg-[color-mix(in_srgb,var(--brand-secondary)_55%,#faf8f3)] p-4 pb-10 md:p-8"
     >
       <div className="mx-auto w-full max-w-[min(88rem,100%)] space-y-6">
-        <header className="admin-top-header relative z-10">
-          <p className="admin-eyebrow relative z-10">Panel konten</p>
-          <h1 className="admin-page-title relative z-10 mt-4">Ellavera CMS</h1>
-          <p className="relative z-10 mt-3 max-w-2xl text-base font-medium leading-relaxed text-black/72 md:text-lg">
-            Atur teks, warna, gambar, urutan section, dan leads — semua lewat form, tanpa kode.
-          </p>
+        <header className="admin-top-header relative z-10 flex flex-wrap items-center justify-between gap-4 py-5 md:py-6">
+          <div className="relative z-10">
+            <h1 className="admin-page-title text-2xl md:text-3xl">{settings.siteName} CMS</h1>
+            <p className="mt-1 max-w-2xl text-sm font-medium text-black/65 md:text-base">
+              Atur teks, gambar, urutan section, dan lihat leads yang masuk.
+            </p>
+          </div>
+          <a
+            href="/"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="retro-button-alt relative z-10 px-4 py-2.5 text-xs"
+          >
+            Buka situs
+          </a>
         </header>
         <div className="w-full">
           <AdminDashboard

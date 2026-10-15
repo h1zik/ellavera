@@ -12,3 +12,9 @@ export function toWhatsAppHref(raw: string | null | undefined): string {
   }
   return `https://wa.me/${digits}`;
 }
+
+/** Link pricelist white label bawaan — bisa ditimpa lewat item "Link pricelist" di section Hero. */
+export const DEFAULT_PRICELIST_URL = "https://bit.ly/Price_List_Ellavera";
+export const DEFAULT_PRICELIST_LABEL = "Lihat pricelist white label";
+
+export type PricelistLink = { label: string; url: string };

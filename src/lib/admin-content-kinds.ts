@@ -13,11 +13,16 @@ export const CONTENT_KINDS: Partial<Record<SectionType, KindOption[]>> = {
     { key: "cta_primary_url", label: "Link tombol utama", valueType: "URL" },
     { key: "cta_secondary_label", label: "Teks tombol sekunder", valueType: "TEXT" },
     { key: "cta_secondary_url", label: "Link tombol sekunder", valueType: "URL" },
+    { key: "cta_pricelist_label", label: "Teks tombol pricelist", valueType: "TEXT" },
+    { key: "cta_pricelist_url", label: "Link pricelist", valueType: "URL" },
   ],
   [SectionType.SERVICES]: [{ key: "service", label: "Item layanan", valueType: "TEXT" }],
   [SectionType.PROCESS]: [{ key: "step", label: "Langkah proses", valueType: "TEXT" }],
   [SectionType.WHY_US]: [{ key: "point", label: "Alasan / poin", valueType: "TEXT" }],
-  [SectionType.CLIENT_PORTFOLIO]: [{ key: "brand", label: "Logo klien", valueType: "JSON" }],
+  // Gambar besar (key "showcase") diatur lewat panel khusus di editor section, bukan item biasa.
+  [SectionType.CLIENT_PORTFOLIO]: [
+    { key: "brand", label: "Logo klien satuan (cadangan)", valueType: "JSON" },
+  ],
   [SectionType.FACTORY_GALLERY]: [{ key: "photo", label: "Foto lokasi / pabrik", valueType: "JSON" }],
   [SectionType.FAQ]: [{ key: "faq", label: "Pertanyaan & jawaban", valueType: "JSON" }],
   [SectionType.TESTIMONIALS]: [{ key: "testimonial", label: "Testimoni", valueType: "JSON" }],

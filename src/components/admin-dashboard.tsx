@@ -2,13 +2,15 @@
 
 import { Content, Lead, Section, SectionType } from "@prisma/client";
 import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { AdminSiteSettings } from "@/lib/admin-settings";
 import { ImageUploadField } from "@/components/admin/image-upload-field";
 import { ContentBlockEditor } from "@/components/admin/content-block-editor";
+import { ClientShowcaseEditor } from "@/components/admin/client-showcase-editor";
 import { TalentGalleryEditor } from "@/components/admin/talent-gallery-editor";
 import { LeadFormFieldsEditor } from "@/components/admin/lead-form-fields-editor";
 import { defaultKindForSection, defaultValueForKind } from "@/lib/admin-content-kinds";
+import { toWhatsAppHref } from "@/lib/contact-links";
 import type { LeadFormField } from "@/lib/lead-form-config";
 import {
   DEFAULT_LEAD_FORM_FIELDS_JSON,
@@ -37,6 +39,17 @@ const SECTION_TYPE_OPTIONS: SectionType[] = [
   SectionType.CONTACT,
 ];
 
+const SETTINGS_GROUPS = [
+  { id: "set-identitas", label: "Identitas" },
+  { id: "set-warna", label: "Warna" },
+  { id: "set-gambar", label: "Gambar & ikon" },
+  { id: "set-leads", label: "Form & email leads" },
+  { id: "set-kontak", label: "Kontak" },
+  { id: "set-seo", label: "SEO" },
+  { id: "set-tracking", label: "Pixel" },
+  { id: "set-purpose", label: "Brand purpose" },
+] as const;
+
 /** Maps tanpa skema → https://… agar lolos validasi API. */
 function normalizeHttpsUrl(raw: string): string {
   const t = raw.trim();
@@ -46,6 +59,34 @@ function normalizeHttpsUrl(raw: string): string {
 }
 
 type ToastState = { message: string; variant: "success" | "error" } | null;
+
+/** Representasi stabil data section yang dikirim ke server (abaikan id/timestamp konten). */
+function sectionFingerprint(s: SectionWithContents): string {
+  return JSON.stringify([
+    s.name,
+    s.slug,
+    s.enabled,
+    s.order,
+    s.title ?? "",
+    s.subtitle ?? "",
+    s.description ?? "",
+    s.contents.map((c) => [c.key, c.value, c.valueType, c.sortOrder]),
+  ]);
+}
+
+/** Snapshot per section id — section baru/terhapus cukup ditambah/dibuang dari peta. */
+function snapshotSections(list: SectionWithContents[]): Record<string, string> {
+  return Object.fromEntries(list.map((s) => [s.id, sectionFingerprint(s)]));
+}
+
+function csvCell(value: string): string {
+  return /[",\n;]/.test(value) ? `"${value.replace(/"/g, '""')}"` : value;
+}
+
+/** Hex 6 digit (#RRGGBB) — format yang diterima input warna & API. */
+function isHexColor(v: string): boolean {
+  return /^#[0-9a-f]{6}$/i.test(v);
+}
 
 /** Satu layar: pengaturan, hub section, satu section, atau leads. */
 type AdminView = "settings" | "sections-hub" | "leads" | `section:${string}`;
@@ -68,6 +109,71 @@ function judulTipeSection(t: SectionType): string {
     [SectionType.CONTACT]: "Kontak",
   };
   return map[t] ?? t;
+}
+
+function CharCount({ value, ideal }: { value: string; ideal: number }) {
+  const over = value.length > ideal;
+  return (
+    <span className={over ? "font-bold text-amber-700" : "font-medium text-black/45"}>
+      {value.length}/{ideal}
+      {over ? " — bisa terpotong" : ""}
+    </span>
+  );
+}
+
+function ColorField({
+  label,
+  usage,
+  value,
+  defaultValue,
+  onChange,
+}: {
+  label: string;
+  usage: string;
+  value: string;
+  defaultValue: string;
+  onChange: (value: string) => void;
+}) {
+  // Teks hex boleh setengah diketik; baru dikirim ke state saat formatnya valid.
+  const [draft, setDraft] = useState(value);
+  useEffect(() => setDraft(value), [value]);
+
+  return (
+    <div className="space-y-1.5 rounded-xl border-2 border-black/10 bg-white/70 p-3">
+      <p className="text-sm font-bold">{label}</p>
+      <p className="text-xs text-black/55">{usage}</p>
+      <div className="flex items-center gap-2">
+        <input
+          type="color"
+          aria-label={`${label} — pilih warna`}
+          className="h-11 w-14 shrink-0 cursor-pointer rounded-lg border-2 border-black/15 bg-white p-0.5"
+          value={isHexColor(value) ? value : defaultValue}
+          onChange={(e) => onChange(e.target.value)}
+        />
+        <input
+          className="retro-input py-2 font-mono text-sm uppercase"
+          aria-label={`${label} — kode hex`}
+          value={draft}
+          maxLength={7}
+          onChange={(e) => {
+            const next = e.target.value.startsWith("#") ? e.target.value : `#${e.target.value}`;
+            setDraft(next);
+            if (isHexColor(next)) onChange(next);
+          }}
+          onBlur={() => setDraft(value)}
+        />
+      </div>
+      {value.toLowerCase() !== defaultValue.toLowerCase() ? (
+        <button
+          type="button"
+          className="text-[11px] font-bold text-black/55 underline"
+          onClick={() => onChange(defaultValue)}
+        >
+          Kembalikan ke {defaultValue}
+        </button>
+      ) : null}
+    </div>
+  );
 }
 
 function emptyContentRow(
@@ -98,6 +204,25 @@ export function AdminDashboard({ initialSettings, initialSections, leads }: Prop
   const [smtpPassword, setSmtpPassword] = useState("");
   const [smtpPasswordClear, setSmtpPasswordClear] = useState(false);
   const [testingEmail, setTestingEmail] = useState(false);
+  const [savingSettings, setSavingSettings] = useState(false);
+  const [savingSections, setSavingSections] = useState(false);
+  /** Snapshot terakhir yang tersimpan di server — pembanding untuk indikator "belum disimpan". */
+  const [savedSettingsJson, setSavedSettingsJson] = useState(() =>
+    JSON.stringify(initialSettings),
+  );
+  const [savedSections, setSavedSections] = useState(() => snapshotSections(initialSections));
+  const settingsDirty =
+    JSON.stringify(settings) !== savedSettingsJson || smtpPassword !== "" || smtpPasswordClear;
+  /** Id section yang berubah sejak terakhir disimpan. */
+  const dirtySectionIds = useMemo(
+    () =>
+      new Set(
+        sections.filter((s) => savedSections[s.id] !== sectionFingerprint(s)).map((s) => s.id),
+      ),
+    [sections, savedSections],
+  );
+  const sectionsDirty = dirtySectionIds.size > 0;
+  const [leadQuery, setLeadQuery] = useState("");
 
   useEffect(() => {
     if (!toast) return;
@@ -156,6 +281,18 @@ export function AdminDashboard({ initialSettings, initialSections, leads }: Prop
   }, [sections, activeView]);
 
   async function saveSettings() {
+    if (savingSettings) return;
+    setSavingSettings(true);
+    try {
+      await saveSettingsRequest();
+    } catch {
+      pushToast("Tidak bisa menghubungi server. Cek koneksi lalu simpan lagi.", "error");
+    } finally {
+      setSavingSettings(false);
+    }
+  }
+
+  async function saveSettingsRequest() {
     const payload = {
       siteName: settings.siteName,
       tagline: settings.tagline,
@@ -197,12 +334,14 @@ export function AdminDashboard({ initialSettings, initialSections, leads }: Prop
     });
 
     if (response.ok) {
+      let next = settings;
       try {
-        const next = (await response.json()) as AdminSiteSettings;
+        next = (await response.json()) as AdminSiteSettings;
         setSettings(next);
       } catch {
         /* ignore parse */
       }
+      setSavedSettingsJson(JSON.stringify(next));
       setSmtpPassword("");
       setSmtpPasswordClear(false);
       pushToast("Pengaturan berhasil disimpan.", "success");
@@ -233,6 +372,19 @@ export function AdminDashboard({ initialSettings, initialSections, leads }: Prop
   }
 
   async function saveSections() {
+    if (savingSections) return;
+    setSavingSections(true);
+    try {
+      await saveSectionsRequest();
+    } catch {
+      pushToast("Tidak bisa menghubungi server. Cek koneksi lalu simpan lagi.", "error");
+    } finally {
+      setSavingSections(false);
+    }
+  }
+
+  async function saveSectionsRequest() {
+    const snapshot = snapshotSections(sections);
     const response = await fetch("/api/admin/sections", {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
@@ -252,12 +404,45 @@ export function AdminDashboard({ initialSettings, initialSections, leads }: Prop
       }),
     });
     if (response.ok) {
-      pushToast("Semua section berhasil disimpan.", "success");
+      setSavedSections(snapshot);
+      pushToast("Section tersimpan dan sudah tampil di situs.", "success");
       router.refresh();
     } else {
-      pushToast("Gagal menyimpan section. Cek data lalu coba lagi.", "error");
+      pushToast(
+        "Section belum tersimpan. Pastikan nama & slug tiap section minimal 2 karakter, lalu simpan lagi.",
+        "error",
+      );
     }
   }
+
+  // Ctrl/Cmd+S menyimpan layar yang sedang dibuka.
+  const saveShortcutRef = useRef<() => void>(() => {});
+  saveShortcutRef.current = () => {
+    if (activeView === "settings") void saveSettings();
+    else if (activeView === "sections-hub" || isSectionView(activeView)) void saveSections();
+  };
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "s") {
+        e.preventDefault();
+        saveShortcutRef.current();
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
+
+  // Cegah perubahan hilang saat tab ditutup / di-refresh.
+  const anyDirty = settingsDirty || sectionsDirty;
+  useEffect(() => {
+    if (!anyDirty) return;
+    const onBeforeUnload = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+      e.returnValue = "";
+    };
+    window.addEventListener("beforeunload", onBeforeUnload);
+    return () => window.removeEventListener("beforeunload", onBeforeUnload);
+  }, [anyDirty]);
 
   async function createSection() {
     setCreating(true);
@@ -282,6 +467,7 @@ export function AdminDashboard({ initialSettings, initialSections, leads }: Prop
       }
       const created = data as SectionWithContents;
       setSections((prev) => [...prev, created]);
+      setSavedSections((prev) => ({ ...prev, [created.id]: sectionFingerprint(created) }));
       setActiveView(`section:${created.id}`);
       pushToast("Section baru dibuat. Silakan edit lalu simpan.", "success");
       setShowCreate(false);
@@ -310,6 +496,11 @@ export function AdminDashboard({ initialSettings, initialSections, leads }: Prop
     });
     if (res.ok) {
       setSections((prev) => prev.filter((s) => s.id !== id));
+      setSavedSections((prev) => {
+        const next = { ...prev };
+        delete next[id];
+        return next;
+      });
       setActiveView((v) => (v === `section:${id}` ? "sections-hub" : v));
       pushToast("Section berhasil dihapus.", "success");
       router.refresh();
@@ -361,6 +552,50 @@ export function AdminDashboard({ initialSettings, initialSections, leads }: Prop
     );
   }
 
+  function patchSection(sectionId: string, patch: Partial<SectionWithContents>) {
+    setSections((prev) => prev.map((s) => (s.id === sectionId ? { ...s, ...patch } : s)));
+  }
+
+  /** Tukar posisi item lalu nomori ulang sortOrder sesuai urutan tampilan. */
+  function moveContentRow(sectionId: string, index: number, direction: -1 | 1) {
+    setSections((prev) =>
+      prev.map((s) => {
+        if (s.id !== sectionId) return s;
+        const target = index + direction;
+        if (target < 0 || target >= s.contents.length) return s;
+        const contents = [...s.contents];
+        [contents[index], contents[target]] = [contents[target], contents[index]];
+        return { ...s, contents: contents.map((c, i) => ({ ...c, sortOrder: i + 1 })) };
+      }),
+    );
+  }
+
+  /** Satu-satunya item "showcase" di section portofolio — dibuat/diubah/dihapus dari panel khusus. */
+  function setShowcaseUrl(section: SectionWithContents, url: string) {
+    setSections((prev) =>
+      prev.map((s) => {
+        if (s.id !== section.id) return s;
+        const others = s.contents.filter((c) => c.key !== "showcase");
+        if (!url) return { ...s, contents: others };
+        const existing = s.contents.find((c) => c.key === "showcase");
+        const now = new Date();
+        const row: Content = existing
+          ? { ...existing, value: url }
+          : {
+              id: `temp-${crypto.randomUUID()}`,
+              sectionId: s.id,
+              key: "showcase",
+              value: url,
+              valueType: "IMAGE_URL",
+              sortOrder: 0,
+              createdAt: now,
+              updatedAt: now,
+            };
+        return { ...s, contents: [row, ...others] };
+      }),
+    );
+  }
+
   const navBtnClass = (active: boolean) =>
     ["admin-nav-btn", active ? "admin-nav-btn--active" : ""].filter(Boolean).join(" ");
 
@@ -370,10 +605,78 @@ export function AdminDashboard({ initialSettings, initialSections, leads }: Prop
         const full = s.name?.trim() || judulTipeSection(s.type);
         const label = full.length > 36 ? `${full.slice(0, 36)}…` : full;
         const view = `section:${s.id}` as AdminView;
-        return { view, label, title: full };
+        return {
+          view,
+          label,
+          title: s.enabled ? full : `${full} (disembunyikan)`,
+          enabled: s.enabled,
+          dirty: dirtySectionIds.has(s.id),
+        };
       }),
-    [sortedSections],
+    [sortedSections, dirtySectionIds],
   );
+
+  const filteredLeads = useMemo(() => {
+    const q = leadQuery.trim().toLowerCase();
+    if (!q) return leads;
+    return leads.filter((lead) =>
+      leadFormFieldsForTable.some((f) => getLeadCellValue(lead, f.id).toLowerCase().includes(q)),
+    );
+  }, [leads, leadQuery, leadFormFieldsForTable]);
+
+  function exportLeadsCsv() {
+    const header = ["Waktu", ...leadFormFieldsForTable.map((f) => f.label)];
+    const rows = filteredLeads.map((lead) => [
+      new Date(lead.createdAt).toLocaleString("id-ID"),
+      ...leadFormFieldsForTable.map((f) => getLeadCellValue(lead, f.id)),
+    ]);
+    // BOM supaya Excel membaca UTF-8 (nama dengan aksen/emoji) dengan benar.
+    const csv = "﻿" + [header, ...rows].map((r) => r.map(csvCell).join(",")).join("\r\n");
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" }));
+    a.download = `leads-ellavera-${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+    window.setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+  }
+
+  function renderLeadCell(lead: Lead, field: LeadFormField) {
+    const value = getLeadCellValue(lead, field.id);
+    if (!value) return <span className="text-black/30">—</span>;
+    if (field.type === "email") {
+      return (
+        <a className="font-semibold underline" href={`mailto:${value}`}>
+          {value}
+        </a>
+      );
+    }
+    if (field.type === "tel") {
+      return (
+        <a
+          className="font-semibold underline"
+          href={toWhatsAppHref(value)}
+          target="_blank"
+          rel="noopener noreferrer"
+          title="Buka chat WhatsApp"
+        >
+          {value}
+        </a>
+      );
+    }
+    return <span className="whitespace-pre-line">{value}</span>;
+  }
+
+  function goTo(view: AdminView) {
+    setActiveView(view);
+    // Di HP konten ada di bawah menu — bawa ke atas supaya layar baru langsung terlihat.
+    if (window.innerWidth < 1024) window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+
+  async function logout() {
+    if (anyDirty && !confirm("Ada perubahan yang belum disimpan. Tetap keluar?")) return;
+    await fetch("/api/admin/logout", { method: "POST" });
+    router.push("/admin/login");
+    router.refresh();
+  }
 
   const adminContext = useMemo(() => {
     if (activeView === "settings") {
@@ -402,117 +705,114 @@ export function AdminDashboard({ initialSettings, initialSections, leads }: Prop
   }, [activeView, sortedSections, leads.length]);
 
   function renderSectionEditor(section: SectionWithContents) {
+    const isPortfolio = section.type === SectionType.CLIENT_PORTFOLIO;
+    // Item "showcase" punya panel sendiri — jangan tampil lagi di daftar item biasa.
+    const listed = section.contents
+      .map((content, index) => ({ content, index }))
+      .filter(({ content }) => !(isPortfolio && content.key === "showcase"));
+    const showcaseUrl = section.contents.find((c) => c.key === "showcase")?.value ?? "";
+    const legacyLogoCount = section.contents.filter((c) => c.key === "brand").length;
+
     return (
-      <div className="retro-item space-y-3">
-        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-black/10 pb-2">
-          <p className="text-xs font-black uppercase tracking-widest text-black/50">
-            {judulTipeSection(section.type)}
-          </p>
-          <button
-            type="button"
-            className="text-xs font-bold uppercase text-red-600 underline"
-            onClick={() => deleteSection(section.id, section.name)}
-          >
-            Hapus section
-          </button>
-        </div>
-        <div className="grid gap-2 md:grid-cols-4">
-          <input
-            className="retro-input"
-            value={section.name}
-            onChange={(e) =>
-              setSections((prev) =>
-                prev.map((it) =>
-                  it.id === section.id ? { ...it, name: e.target.value } : it,
-                ),
-              )
-            }
-            placeholder="Nama navigasi"
-          />
-          <input
-            className="retro-input"
-            value={section.slug}
-            onChange={(e) =>
-              setSections((prev) =>
-                prev.map((it) =>
-                  it.id === section.id ? { ...it, slug: e.target.value } : it,
-                ),
-              )
-            }
-            placeholder="slug"
-          />
-          <input
-            className="retro-input"
-            type="number"
-            value={section.order}
-            onChange={(e) =>
-              setSections((prev) =>
-                prev.map((it) =>
-                  it.id === section.id ? { ...it, order: Number(e.target.value) } : it,
-                ),
-              )
-            }
-            placeholder="Urutan"
-          />
-          <label className="flex items-center gap-2 font-bold">
+      <div className="space-y-6">
+        <div className="admin-form-group space-y-4">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <h3 className="admin-form-group-title">Info section</h3>
+            <label className="admin-switch">
+              <input
+                type="checkbox"
+                checked={section.enabled}
+                onChange={(e) => patchSection(section.id, { enabled: e.target.checked })}
+              />
+              <span className="admin-switch-track" aria-hidden />
+              <span className="text-sm font-bold">
+                {section.enabled ? "Tampil di situs" : "Disembunyikan"}
+              </span>
+            </label>
+          </div>
+          <div className="grid gap-3 md:grid-cols-[2fr_2fr_1fr]">
+            <label className="admin-label">
+              Nama di menu
+              <input
+                className="retro-input mt-1"
+                value={section.name}
+                onChange={(e) => patchSection(section.id, { name: e.target.value })}
+                placeholder="Contoh: Layanan"
+              />
+            </label>
+            <label className="admin-label">
+              Alamat anchor (slug)
+              <span className="mt-1 flex items-center">
+                <span className="admin-input-prefix">#</span>
+                <input
+                  className="retro-input rounded-l-none"
+                  value={section.slug}
+                  onChange={(e) =>
+                    patchSection(section.id, { slug: e.target.value.toLowerCase() })
+                  }
+                  placeholder="layanan"
+                />
+              </span>
+            </label>
+            <label className="admin-label">
+              Urutan
+              <input
+                className="retro-input mt-1"
+                type="number"
+                value={section.order}
+                onChange={(e) => patchSection(section.id, { order: Number(e.target.value) })}
+              />
+            </label>
+          </div>
+          <label className="admin-label">
+            Judul
             <input
-              type="checkbox"
-              checked={section.enabled}
-              onChange={(e) =>
-                setSections((prev) =>
-                  prev.map((it) =>
-                    it.id === section.id ? { ...it, enabled: e.target.checked } : it,
-                  ),
-                )
-              }
+              className="retro-input mt-1"
+              value={section.title ?? ""}
+              onChange={(e) => patchSection(section.id, { title: e.target.value })}
+              placeholder="Judul besar section"
             />
-            Tampil
+          </label>
+          {section.type === SectionType.HERO ? (
+            <label className="admin-label">
+              Label kecil di atas judul
+              <input
+                className="retro-input mt-1"
+                value={section.subtitle ?? ""}
+                onChange={(e) => patchSection(section.id, { subtitle: e.target.value })}
+                placeholder="Contoh: Ellavera"
+              />
+            </label>
+          ) : null}
+          <label className="admin-label">
+            Deskripsi
+            <textarea
+              className="retro-input mt-1 min-h-[88px]"
+              value={section.description ?? ""}
+              onChange={(e) => patchSection(section.id, { description: e.target.value })}
+              placeholder="Satu-dua kalimat di bawah judul (opsional)"
+            />
           </label>
         </div>
-        <input
-          className="retro-input"
-          value={section.title ?? ""}
-          onChange={(e) =>
-            setSections((prev) =>
-              prev.map((it) =>
-                it.id === section.id ? { ...it, title: e.target.value } : it,
-              ),
-            )
-          }
-          placeholder="Judul"
-        />
-        <input
-          className="retro-input"
-          value={section.subtitle ?? ""}
-          onChange={(e) =>
-            setSections((prev) =>
-              prev.map((it) =>
-                it.id === section.id ? { ...it, subtitle: e.target.value } : it,
-              ),
-            )
-          }
-          placeholder="Subtitle (mis. Hero)"
-        />
-        <textarea
-          className="retro-input min-h-[80px]"
-          value={section.description ?? ""}
-          onChange={(e) =>
-            setSections((prev) =>
-              prev.map((it) =>
-                it.id === section.id ? { ...it, description: e.target.value } : it,
-              ),
-            )
-          }
-          placeholder="Deskripsi section"
-        />
 
-        <div className="space-y-3 pt-2">
-          <div className="flex flex-wrap items-center justify-between gap-2">
+        {isPortfolio ? (
+          <ClientShowcaseEditor
+            url={showcaseUrl}
+            onChange={(url) => setShowcaseUrl(section, url)}
+            legacyLogoCount={legacyLogoCount}
+          />
+        ) : null}
+
+        <div className="space-y-3">
+          <div className="flex flex-wrap items-end justify-between gap-2">
             <div>
-              <p className="text-sm font-bold uppercase">Isi di halaman</p>
+              <h3 className="admin-form-group-title">
+                {isPortfolio ? "Logo satuan (cadangan)" : "Isi section"}
+              </h3>
               <p className="mt-1 max-w-xl text-xs text-black/55">
-                Tambah item (langkah, logo, FAQ, dll.) — form singkat, tanpa kode. Ganti
-                &quot;Jenis konten&quot; jika perlu.
+                {isPortfolio
+                  ? "Hanya tampil selama gambar logo klien di atas masih kosong."
+                  : "Urutan di sini = urutan di halaman. Pakai tombol ↑ ↓ untuk memindah."}
               </p>
             </div>
             <button
@@ -523,15 +823,83 @@ export function AdminDashboard({ initialSettings, initialSections, leads }: Prop
               + Tambah item
             </button>
           </div>
-          {section.contents.map((content, index) => (
-            <ContentBlockEditor
-              key={content.id}
-              sectionType={section.type}
-              content={content}
-              onPatch={(patch) => patchContent(section.id, index, patch)}
-              onRemove={() => removeContentRow(section.id, index)}
+          {listed.length === 0 ? (
+            <p className="admin-empty">
+              Belum ada item. Klik &quot;+ Tambah item&quot; untuk mulai mengisi.
+            </p>
+          ) : (
+            listed.map(({ content, index }, i) => (
+              <ContentBlockEditor
+                key={content.id}
+                sectionType={section.type}
+                content={content}
+                position={i + 1}
+                total={listed.length}
+                onPatch={(patch) => patchContent(section.id, index, patch)}
+                onRemove={() => removeContentRow(section.id, index)}
+                onMove={(dir) => {
+                  const neighbour = listed[i + dir];
+                  if (neighbour) moveContentRow(section.id, index, (neighbour.index - index) as -1 | 1);
+                }}
+              />
+            ))
+          )}
+        </div>
+
+        <div className="flex flex-wrap items-center justify-between gap-3 border-t-2 border-dashed border-black/10 pt-4">
+          <a
+            href={`/#${section.slug}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-sm font-bold underline decoration-[var(--brand-primary)] decoration-2 underline-offset-4"
+          >
+            Lihat section ini di situs
+          </a>
+          <button
+            type="button"
+            className="text-xs font-bold text-red-700 underline"
+            onClick={() => deleteSection(section.id, section.name)}
+          >
+            Hapus section
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  function renderSaveBar(opts: {
+    dirty: boolean;
+    saving: boolean;
+    label: string;
+    onSave: () => void;
+  }) {
+    return (
+      <div className="admin-sticky-actions">
+        <div className="admin-sticky-actions-inner">
+          <p
+            className={[
+              "flex items-center gap-2 text-xs font-semibold sm:max-w-md",
+              opts.dirty ? "text-[var(--retro-black)]" : "text-black/50",
+            ].join(" ")}
+            aria-live="polite"
+          >
+            <span
+              className={["admin-dot", opts.dirty ? "admin-dot--dirty" : ""].join(" ")}
+              aria-hidden
             />
-          ))}
+            {opts.dirty
+              ? "Ada perubahan yang belum disimpan."
+              : "Semua perubahan sudah tersimpan."}
+            <kbd className="admin-kbd hidden sm:inline">Ctrl+S</kbd>
+          </p>
+          <button
+            type="button"
+            className="retro-button shrink-0 disabled:cursor-not-allowed disabled:opacity-60"
+            onClick={opts.onSave}
+            disabled={opts.saving}
+          >
+            {opts.saving ? "Menyimpan…" : opts.label}
+          </button>
         </div>
       </div>
     );
@@ -568,32 +936,47 @@ export function AdminDashboard({ initialSettings, initialSections, leads }: Prop
           <button
             type="button"
             className={`${navBtnClass(activeView === "settings")} shrink-0 whitespace-nowrap lg:w-full lg:whitespace-normal`}
-            onClick={() => setActiveView("settings")}
+            aria-current={activeView === "settings" ? "page" : undefined}
+            onClick={() => goTo("settings")}
           >
-            Pengaturan
+            <span className="flex items-center justify-between gap-2">
+              Pengaturan
+              {settingsDirty ? (
+                <span className="admin-dot admin-dot--dirty" title="Belum disimpan" />
+              ) : null}
+            </span>
           </button>
           <button
             type="button"
             className={`${navBtnClass(activeView === "sections-hub")} shrink-0 whitespace-nowrap lg:w-full lg:whitespace-normal`}
-            onClick={() => setActiveView("sections-hub")}
+            aria-current={activeView === "sections-hub" ? "page" : undefined}
+            onClick={() => goTo("sections-hub")}
           >
-            Section
+            Semua section
           </button>
           <div
             className="hidden h-px w-full bg-black/10 lg:my-2 lg:block"
             role="presentation"
           />
           <p className="admin-nav-section-label hidden lg:block">Tiap section</p>
-          <div className="flex flex-row gap-1 overflow-x-auto lg:max-h-[min(40vh,22rem)] lg:flex-col lg:overflow-y-auto lg:pr-1">
+          <div className="flex flex-row gap-1 overflow-x-auto lg:max-h-[min(44vh,24rem)] lg:flex-col lg:overflow-y-auto lg:pr-1">
             {sectionNavItems.map((item) => (
               <button
                 key={item.view}
                 type="button"
                 className={`${navBtnClass(activeView === item.view)} shrink-0 whitespace-nowrap pl-2 text-xs font-semibold text-black/75 lg:w-full lg:whitespace-normal lg:text-left lg:text-sm`}
                 title={item.title}
-                onClick={() => setActiveView(item.view)}
+                aria-current={activeView === item.view ? "page" : undefined}
+                onClick={() => goTo(item.view)}
               >
-                {item.label}
+                <span className="flex items-center justify-between gap-2">
+                  <span className={item.enabled ? "" : "text-black/40 line-through"}>
+                    {item.label}
+                  </span>
+                  {item.dirty ? (
+                    <span className="admin-dot admin-dot--dirty" title="Belum disimpan" />
+                  ) : null}
+                </span>
               </button>
             ))}
           </div>
@@ -604,36 +987,52 @@ export function AdminDashboard({ initialSettings, initialSections, leads }: Prop
           <button
             type="button"
             className={`${navBtnClass(activeView === "leads")} shrink-0 whitespace-nowrap lg:w-full lg:whitespace-normal`}
-            onClick={() => setActiveView("leads")}
+            aria-current={activeView === "leads" ? "page" : undefined}
+            onClick={() => goTo("leads")}
           >
-            Leads ({leads.length})
+            <span className="flex items-center justify-between gap-2">
+              Leads
+              <span className="admin-count">{leads.length}</span>
+            </span>
           </button>
+          <div className="mt-3 hidden flex-col gap-2 border-t border-black/10 pt-3 lg:flex">
+            <a
+              href="/"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="admin-nav-btn text-center"
+            >
+              Lihat situs
+            </a>
+            <button
+              type="button"
+              className="retro-button-alt w-full px-3 py-2 text-xs font-black"
+              onClick={logout}
+            >
+              Keluar
+            </button>
+          </div>
+        </nav>
+        <div className="mt-3 grid grid-cols-2 gap-2 lg:hidden">
+          <a
+            href="/"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="retro-button-alt px-3 py-2 text-xs font-black"
+          >
+            Lihat situs
+          </a>
           <button
             type="button"
-            className="retro-button-alt mt-2 hidden w-full border-t border-black/10 px-3 pt-3 text-xs font-black lg:block"
-            onClick={async () => {
-              await fetch("/api/admin/logout", { method: "POST" });
-              router.push("/admin/login");
-              router.refresh();
-            }}
+            className="retro-button-alt px-3 py-2 text-xs font-black"
+            onClick={logout}
           >
             Keluar
           </button>
-        </nav>
-        <button
-          type="button"
-          className="retro-button-alt mt-3 w-full px-3 py-2 text-xs font-black lg:hidden"
-          onClick={async () => {
-            await fetch("/api/admin/logout", { method: "POST" });
-            router.push("/admin/login");
-            router.refresh();
-          }}
-        >
-          Keluar
-        </button>
+        </div>
       </aside>
 
-      <div className="min-w-0 min-h-0 flex-1 overflow-y-auto pb-8 [scrollbar-gutter:stable]">
+      <div className="min-w-0 flex-1 pb-8">
         <div className="admin-context-bar" role="status" aria-live="polite">
           <span className="admin-context-bar-label">Anda di</span>
           <span className="admin-context-bar-value">{adminContext.title}</span>
@@ -649,22 +1048,35 @@ export function AdminDashboard({ initialSettings, initialSections, leads }: Prop
         <p className="mt-2 max-w-2xl text-sm text-black/65">
           Ubah per blok, lalu simpan — data baru tampil di beranda setelah berhasil disimpan.
         </p>
+        <nav className="admin-jump" aria-label="Lompat ke grup pengaturan">
+          {SETTINGS_GROUPS.map((g) => (
+            <a key={g.id} href={`#${g.id}`} className="admin-jump-link">
+              {g.label}
+            </a>
+          ))}
+        </nav>
         <div className="mt-6 flex flex-col gap-8">
-          <div className="admin-form-group space-y-3">
+          <div id="set-identitas" className="admin-form-group scroll-mt-6 space-y-3">
             <h3 className="admin-form-group-title">Identitas & tagline</h3>
             <div className="grid gap-3 md:grid-cols-2">
-              <input
-                className="retro-input"
-                value={settings.siteName}
-                onChange={(e) => setSettings((prev) => ({ ...prev, siteName: e.target.value }))}
-                placeholder="Nama situs"
-              />
-              <input
-                className="retro-input"
-                value={settings.tagline}
-                onChange={(e) => setSettings((prev) => ({ ...prev, tagline: e.target.value }))}
-                placeholder="Tagline"
-              />
+              <label className="admin-label">
+                Nama situs
+                <input
+                  className="retro-input mt-1"
+                  value={settings.siteName}
+                  onChange={(e) => setSettings((prev) => ({ ...prev, siteName: e.target.value }))}
+                  placeholder="Ellavera"
+                />
+              </label>
+              <label className="admin-label">
+                Tagline (di bawah logo header)
+                <input
+                  className="retro-input mt-1"
+                  value={settings.tagline}
+                  onChange={(e) => setSettings((prev) => ({ ...prev, tagline: e.target.value }))}
+                  placeholder="Maklon kosmetik buat Gen-Z & brand owner"
+                />
+              </label>
             </div>
             <div className="space-y-3 rounded-xl border-2 border-black/10 bg-white/60 p-4">
               <div>
@@ -723,46 +1135,29 @@ export function AdminDashboard({ initialSettings, initialSections, leads }: Prop
             </div>
           </div>
 
-          <div className="admin-form-group space-y-3">
+          <div id="set-warna" className="admin-form-group scroll-mt-6 space-y-3">
             <h3 className="admin-form-group-title">Warna tema</h3>
             <div className="grid gap-3 sm:grid-cols-3">
-              <label className="font-bold">
-                Warna utama (#26CCC2)
-                <input
-                  type="color"
-                  className="mt-1 h-12 w-full cursor-pointer rounded-xl shadow-sm"
-                  value={settings.primaryColor}
-                  onChange={(e) =>
-                    setSettings((prev) => ({ ...prev, primaryColor: e.target.value }))
-                  }
+              {(
+                [
+                  ["primaryColor", "Warna utama", "Tombol, bayangan kartu", "#26CCC2"],
+                  ["secondaryColor", "Warna sekunder", "Latar kartu section", "#FAE3C7"],
+                  ["accentColor", "Aksen", "Tombol kedua, sorotan", "#FFB76C"],
+                ] as const
+              ).map(([key, label, usage, fallback]) => (
+                <ColorField
+                  key={key}
+                  label={label}
+                  usage={usage}
+                  defaultValue={fallback}
+                  value={settings[key]}
+                  onChange={(v) => setSettings((prev) => ({ ...prev, [key]: v }))}
                 />
-              </label>
-              <label className="font-bold">
-                Warna sekunder (#FAE3C7)
-                <input
-                  type="color"
-                  className="mt-1 h-12 w-full cursor-pointer rounded-xl shadow-sm"
-                  value={settings.secondaryColor}
-                  onChange={(e) =>
-                    setSettings((prev) => ({ ...prev, secondaryColor: e.target.value }))
-                  }
-                />
-              </label>
-              <label className="font-bold">
-                Aksen (#FFB76C)
-                <input
-                  type="color"
-                  className="mt-1 h-12 w-full cursor-pointer rounded-xl shadow-sm"
-                  value={settings.accentColor}
-                  onChange={(e) =>
-                    setSettings((prev) => ({ ...prev, accentColor: e.target.value }))
-                  }
-                />
-              </label>
+              ))}
             </div>
           </div>
 
-          <div className="admin-form-group space-y-4">
+          <div id="set-gambar" className="admin-form-group scroll-mt-6 space-y-4">
             <h3 className="admin-form-group-title">Gambar & ikon</h3>
             <div className="space-y-2 rounded-xl border-2 border-black/10 bg-white/60 p-4">
               <p className="text-sm font-bold">Gambar hero</p>
@@ -823,7 +1218,7 @@ export function AdminDashboard({ initialSettings, initialSections, leads }: Prop
             </div>
           </div>
 
-          <div className="admin-form-group space-y-4">
+          <div id="set-leads" className="admin-form-group scroll-mt-6 space-y-4">
             <h3 className="admin-form-group-title">Galeri & form leads</h3>
             <TalentGalleryEditor
               json={settings.talentGalleryJson}
@@ -1020,17 +1415,21 @@ export function AdminDashboard({ initialSettings, initialSections, leads }: Prop
             </div>
           </div>
 
-          <div className="admin-form-group space-y-3">
+          <div id="set-kontak" className="admin-form-group scroll-mt-6 space-y-3">
             <h3 className="admin-form-group-title">Kontak di halaman publik</h3>
             <div className="grid gap-3 md:grid-cols-2">
-              <input
-                className="retro-input"
-                value={settings.contactEmail ?? ""}
-                onChange={(e) =>
-                  setSettings((prev) => ({ ...prev, contactEmail: e.target.value }))
-                }
-                placeholder="Email kontak"
-              />
+              <label className="admin-label">
+                Email kontak
+                <input
+                  className="retro-input mt-1 font-normal"
+                  type="email"
+                  value={settings.contactEmail ?? ""}
+                  onChange={(e) =>
+                    setSettings((prev) => ({ ...prev, contactEmail: e.target.value }))
+                  }
+                  placeholder="halo@ellavera.id"
+                />
+              </label>
               <label className="font-bold">
                 Nomor WhatsApp (tampil di halaman kontak)
                 <input
@@ -1048,14 +1447,17 @@ export function AdminDashboard({ initialSettings, initialSections, leads }: Prop
                 </span>
               </label>
             </div>
-            <textarea
-              className="retro-input min-h-[88px]"
-              value={settings.locationAddress ?? ""}
-              onChange={(e) =>
-                setSettings((prev) => ({ ...prev, locationAddress: e.target.value || null }))
-              }
-              placeholder="Alamat (Contact)"
-            />
+            <label className="admin-label">
+              Alamat kantor / pabrik
+              <textarea
+                className="retro-input mt-1 min-h-[88px] font-normal"
+                value={settings.locationAddress ?? ""}
+                onChange={(e) =>
+                  setSettings((prev) => ({ ...prev, locationAddress: e.target.value || null }))
+                }
+                placeholder="Jl. …, Kota, Provinsi"
+              />
+            </label>
             <label className="font-bold">
               Link Google Maps (tombol di section kontak)
               <input
@@ -1073,33 +1475,48 @@ export function AdminDashboard({ initialSettings, initialSections, leads }: Prop
             </label>
           </div>
 
-          <div className="admin-form-group space-y-3">
+          <div id="set-seo" className="admin-form-group scroll-mt-6 space-y-3">
             <h3 className="admin-form-group-title">SEO</h3>
-            <input
-              className="retro-input"
-              value={settings.seoTitle ?? ""}
-              onChange={(e) => setSettings((prev) => ({ ...prev, seoTitle: e.target.value }))}
-              placeholder="SEO title"
-            />
-            <textarea
-              className="retro-input"
-              value={settings.seoDescription ?? ""}
-              onChange={(e) =>
-                setSettings((prev) => ({ ...prev, seoDescription: e.target.value }))
-              }
-              placeholder="SEO description"
-            />
-            <input
-              className="retro-input"
-              value={settings.seoKeywords ?? ""}
-              onChange={(e) =>
-                setSettings((prev) => ({ ...prev, seoKeywords: e.target.value }))
-              }
-              placeholder="SEO keywords"
-            />
+            <label className="admin-label">
+              <span className="flex justify-between gap-2">
+                Judul di Google & tab browser
+                <CharCount value={settings.seoTitle ?? ""} ideal={60} />
+              </span>
+              <input
+                className="retro-input mt-1 font-normal"
+                value={settings.seoTitle ?? ""}
+                onChange={(e) => setSettings((prev) => ({ ...prev, seoTitle: e.target.value }))}
+                placeholder="Ellavera | Maklon kosmetik Gen-Z"
+              />
+            </label>
+            <label className="admin-label">
+              <span className="flex justify-between gap-2">
+                Deskripsi di hasil pencarian
+                <CharCount value={settings.seoDescription ?? ""} ideal={160} />
+              </span>
+              <textarea
+                className="retro-input mt-1 min-h-[80px] font-normal"
+                value={settings.seoDescription ?? ""}
+                onChange={(e) =>
+                  setSettings((prev) => ({ ...prev, seoDescription: e.target.value }))
+                }
+                placeholder="Satu-dua kalimat yang menjelaskan Ellavera"
+              />
+            </label>
+            <label className="admin-label">
+              Kata kunci (pisahkan dengan koma)
+              <input
+                className="retro-input mt-1 font-normal"
+                value={settings.seoKeywords ?? ""}
+                onChange={(e) =>
+                  setSettings((prev) => ({ ...prev, seoKeywords: e.target.value }))
+                }
+                placeholder="maklon kosmetik, private label, skincare"
+              />
+            </label>
           </div>
 
-          <div className="admin-form-group space-y-3">
+          <div id="set-tracking" className="admin-form-group scroll-mt-6 space-y-3">
             <h3 className="admin-form-group-title">Tracking &amp; iklan</h3>
             <label className="font-bold">
               Meta (Facebook) Pixel ID
@@ -1120,28 +1537,27 @@ export function AdminDashboard({ initialSettings, initialSections, leads }: Prop
             </label>
           </div>
 
-          <div className="admin-form-group space-y-3">
+          <div id="set-purpose" className="admin-form-group scroll-mt-6 space-y-3">
             <h3 className="admin-form-group-title">Brand purpose</h3>
-            <textarea
-              className="retro-input min-h-[100px]"
-              value={settings.brandPurpose}
-              onChange={(e) =>
-                setSettings((prev) => ({ ...prev, brandPurpose: e.target.value }))
-              }
-              placeholder="Brand purpose"
-            />
+            <label className="admin-label">
+              Teks kecil di footer
+              <textarea
+                className="retro-input mt-1 min-h-[100px] font-normal"
+                value={settings.brandPurpose}
+                onChange={(e) =>
+                  setSettings((prev) => ({ ...prev, brandPurpose: e.target.value }))
+                }
+                placeholder="Misi singkat Ellavera"
+              />
+            </label>
           </div>
         </div>
-        <div className="admin-sticky-actions">
-          <div className="admin-sticky-actions-inner">
-            <p className="text-xs font-semibold text-black/55 sm:max-w-md">
-              Perubahan belum ke server sampai Anda menekan simpan.
-            </p>
-            <button type="button" className="retro-button shrink-0" onClick={saveSettings}>
-              Simpan pengaturan
-            </button>
-          </div>
-        </div>
+        {renderSaveBar({
+          dirty: settingsDirty,
+          saving: savingSettings,
+          label: "Simpan pengaturan",
+          onSave: saveSettings,
+        })}
       </section>
         ) : null}
 
@@ -1236,34 +1652,57 @@ export function AdminDashboard({ initialSettings, initialSections, leads }: Prop
           </div>
         ) : null}
 
-        <div className="mt-6 grid gap-3 sm:grid-cols-2">
+        <ul className="mt-6 grid gap-3 sm:grid-cols-2">
           {sortedSections.length === 0 ? (
-            <p className="text-sm font-semibold text-black/55 sm:col-span-2">
-              Belum ada section. Tambah lewat &quot;+ Section baru&quot;.
-            </p>
+            <li className="admin-empty sm:col-span-2">
+              Belum ada section. Klik &quot;+ Section baru&quot; untuk membuat yang pertama.
+            </li>
           ) : (
-            sortedSections.map((section) => (
-              <button
-                key={section.id}
-                type="button"
-                className="retro-item flex w-full flex-col items-start gap-2 border-2 border-black/10 p-4 text-left transition hover:border-[var(--brand-primary)] hover:bg-[color-mix(in_srgb,var(--brand-primary)_8%,transparent)]"
-                onClick={() => setActiveView(`section:${section.id}`)}
-              >
-                <p className="text-[10px] font-black uppercase tracking-widest text-black/45">
-                  {judulTipeSection(section.type)}
-                </p>
-                <p className="text-lg font-black leading-tight">{section.name}</p>
-                <p className="text-xs text-black/50">/{section.slug}</p>
-                <span className="mt-1 text-sm font-black text-[var(--brand-primary)]">
-                  Edit section →
-                </span>
-              </button>
-            ))
+            sortedSections.map((section) => {
+              const itemCount = section.contents.length;
+              const dirty = dirtySectionIds.has(section.id);
+              return (
+                <li key={section.id} className="admin-hub-card">
+                  <button
+                    type="button"
+                    className="flex w-full flex-col items-start gap-1.5 p-4 text-left"
+                    onClick={() => goTo(`section:${section.id}`)}
+                  >
+                    <span className="flex w-full items-center justify-between gap-2">
+                      <span className="text-xs font-bold text-black/50">
+                        {section.order}. {judulTipeSection(section.type)}
+                      </span>
+                      {dirty ? (
+                        <span className="admin-dot admin-dot--dirty" title="Belum disimpan" />
+                      ) : null}
+                    </span>
+                    <span className="text-lg font-black leading-tight">{section.name}</span>
+                    <span className="text-xs text-black/50">
+                      #{section.slug} · {itemCount} item
+                    </span>
+                  </button>
+                  <label className="admin-switch border-t border-black/10 px-4 py-2.5">
+                    <input
+                      type="checkbox"
+                      checked={section.enabled}
+                      onChange={(e) => patchSection(section.id, { enabled: e.target.checked })}
+                    />
+                    <span className="admin-switch-track" aria-hidden />
+                    <span className="text-xs font-bold">
+                      {section.enabled ? "Tampil" : "Disembunyikan"}
+                    </span>
+                  </label>
+                </li>
+              );
+            })
           )}
-        </div>
-        <button type="button" className="retro-button mt-6" onClick={saveSections}>
-          Simpan semua section
-        </button>
+        </ul>
+        {renderSaveBar({
+          dirty: sectionsDirty,
+          saving: savingSections,
+          label: "Simpan semua section",
+          onSave: saveSections,
+        })}
       </section>
         ) : null}
 
@@ -1281,22 +1720,28 @@ export function AdminDashboard({ initialSettings, initialSections, leads }: Prop
           }
           return (
             <>
-              <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-                <button
-                  type="button"
-                  className="retro-button-alt px-4 py-2 text-sm font-black"
-                  onClick={() => setActiveView("sections-hub")}
-                >
-                  ← Daftar section
-                </button>
-                <p className="text-sm font-bold text-black/60">
-                  {section.name} · {judulTipeSection(section.type)}
-                </p>
+              <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
+                <div>
+                  <button
+                    type="button"
+                    className="text-sm font-bold text-black/55 underline underline-offset-4 hover:text-black"
+                    onClick={() => goTo("sections-hub")}
+                  >
+                    ← Semua section
+                  </button>
+                  <h2 className="admin-section-heading mt-2 border-b-0 pb-0">{section.name}</h2>
+                  <p className="text-sm font-semibold text-black/55">
+                    {judulTipeSection(section.type)}
+                  </p>
+                </div>
               </div>
               {renderSectionEditor(section)}
-              <button type="button" className="retro-button mt-6" onClick={saveSections}>
-                Simpan semua section
-              </button>
+              {renderSaveBar({
+                dirty: sectionsDirty,
+                saving: savingSections,
+                label: "Simpan section",
+                onSave: saveSections,
+              })}
             </>
           );
         })()}
@@ -1305,47 +1750,90 @@ export function AdminDashboard({ initialSettings, initialSections, leads }: Prop
 
         {activeView === "leads" ? (
       <section className="admin-content-card">
-        <h2 className="admin-section-heading">Leads ({leads.length})</h2>
-        <div className="mt-6 overflow-x-auto rounded-2xl border-2 border-black/12 bg-white/50 shadow-[4px_4px_0_0_rgba(13,13,13,0.06)]">
-          <table className="w-full min-w-[640px] border-collapse text-left text-sm">
-            <thead>
-              <tr className="border-b-2 border-[var(--retro-black)] bg-[color-mix(in_srgb,var(--brand-primary)_88%,white)]">
-                <th className="p-3.5 font-black whitespace-nowrap text-[var(--retro-black)]">
-                  Waktu
-                </th>
-                {leadFormFieldsForTable.map((f) => (
-                  <th key={f.id} className="p-3.5 font-black text-[var(--retro-black)]">
-                    {f.label}
+        <div className="flex flex-wrap items-end justify-between gap-3">
+          <div>
+            <h2 className="admin-section-heading border-b-0 pb-0">Leads</h2>
+            <p className="mt-1 text-sm text-black/60">
+              {filteredLeads.length === leads.length
+                ? `${leads.length} kiriman terbaru dari form kontak.`
+                : `${filteredLeads.length} dari ${leads.length} kiriman cocok.`}
+            </p>
+          </div>
+          <div className="flex w-full flex-wrap gap-2 sm:w-auto">
+            <input
+              type="search"
+              className="retro-input py-2 text-sm sm:w-64"
+              placeholder="Cari nama, email, nomor…"
+              aria-label="Cari leads"
+              value={leadQuery}
+              onChange={(e) => setLeadQuery(e.target.value)}
+            />
+            <button
+              type="button"
+              className="retro-button-alt px-4 py-2 text-xs"
+              onClick={exportLeadsCsv}
+              disabled={filteredLeads.length === 0}
+            >
+              Unduh CSV
+            </button>
+          </div>
+        </div>
+        {leads.length === 0 ? (
+          <p className="admin-empty mt-6">
+            Belum ada lead. Kiriman dari form &quot;Kirim brief&quot; di situs akan muncul di sini.
+          </p>
+        ) : (
+          <div className="mt-6 max-h-[70vh] overflow-auto rounded-2xl border-2 border-black/12 bg-white/50 shadow-[4px_4px_0_0_rgba(13,13,13,0.06)]">
+            <table className="w-full min-w-[640px] border-collapse text-left text-sm">
+              <thead className="sticky top-0 z-10">
+                <tr className="border-b-2 border-[var(--retro-black)] bg-[color-mix(in_srgb,var(--brand-primary)_88%,white)]">
+                  <th className="p-3.5 font-black whitespace-nowrap text-[var(--retro-black)]">
+                    Waktu
                   </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {leads.map((lead, index) => (
-                <tr
-                  key={lead.id}
-                  className={
-                    index % 2 === 0
-                      ? "bg-white/60 transition hover:bg-white/90"
-                      : "bg-[color-mix(in_srgb,var(--brand-secondary)_35%,white)] transition hover:bg-white/95"
-                  }
-                >
-                  <td className="p-3 align-top whitespace-nowrap text-xs font-semibold text-black/70">
-                    {new Date(lead.createdAt).toLocaleString("id-ID", {
-                      dateStyle: "short",
-                      timeStyle: "short",
-                    })}
-                  </td>
                   {leadFormFieldsForTable.map((f) => (
-                    <td key={f.id} className="p-3 align-top">
-                      {getLeadCellValue(lead, f.id)}
-                    </td>
+                    <th key={f.id} className="p-3.5 font-black text-[var(--retro-black)]">
+                      {f.label}
+                    </th>
                   ))}
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody>
+                {filteredLeads.map((lead, index) => (
+                  <tr
+                    key={lead.id}
+                    className={
+                      index % 2 === 0
+                        ? "bg-white/60 transition hover:bg-white/90"
+                        : "bg-[color-mix(in_srgb,var(--brand-secondary)_35%,white)] transition hover:bg-white/95"
+                    }
+                  >
+                    <td className="p-3 align-top whitespace-nowrap text-xs font-semibold text-black/70">
+                      {new Date(lead.createdAt).toLocaleString("id-ID", {
+                        dateStyle: "short",
+                        timeStyle: "short",
+                      })}
+                    </td>
+                    {leadFormFieldsForTable.map((f) => (
+                      <td key={f.id} className="p-3 align-top">
+                        {renderLeadCell(lead, f)}
+                      </td>
+                    ))}
+                  </tr>
+                ))}
+                {filteredLeads.length === 0 ? (
+                  <tr>
+                    <td
+                      colSpan={leadFormFieldsForTable.length + 1}
+                      className="p-6 text-center text-sm text-black/55"
+                    >
+                      Tidak ada lead yang cocok dengan &quot;{leadQuery}&quot;.
+                    </td>
+                  </tr>
+                ) : null}
+              </tbody>
+            </table>
+          </div>
+        )}
       </section>
         ) : null}
       </div>

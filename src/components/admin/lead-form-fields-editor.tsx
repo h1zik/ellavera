@@ -44,6 +44,8 @@ export function LeadFormFieldsEditor({ json, onChange }: Props) {
   const [fields, setFields] = useState<LeadFormField[]>(initialFields);
   /** Key stabil per baris — jangan pakai `field.id` di React key supaya fokus input tidak loncat saat mengedit id. */
   const [rowKeys, setRowKeys] = useState<string[]>(() => newRowKeys(initialFields.length));
+  /** Baris yang detailnya (placeholder, min. karakter, id) sedang dibuka. */
+  const [openRows, setOpenRows] = useState<Set<string>>(() => new Set());
 
   useEffect(() => {
     const trimmed = (json ?? "").trim();
@@ -106,146 +108,168 @@ export function LeadFormFieldsEditor({ json, onChange }: Props) {
     emit(d);
   }
 
+
+  function toggleOpen(key: string) {
+    setOpenRows((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+  }
+
   const parseDetail = leadFormFieldsJsonIssuesSummary(JSON.stringify(fields));
 
   return (
-    <div className="md:col-span-2 space-y-3 rounded-xl border-2 border-black/10 bg-white/60 p-4">
-      <div className="flex flex-wrap items-start justify-between gap-2">
-        <div>
-          <p className="text-sm font-bold">Form leads (halaman kontak)</p>
-          <p className="text-xs font-semibold text-black/55">
-            Urutan field = urutan di form publik. Untuk disimpan: tepat satu field bertipe email
-            (wajib isi), id unik. Anda boleh sementara melanggar aturan saat mengedit; simpan
-            pengaturan hanya jika sudah valid.
-          </p>
-          <div className="min-h-[2.75rem]">
-            {parseDetail ? (
-              <p className="mt-2 text-xs font-bold text-amber-800">
-                Belum bisa disimpan: {parseDetail}
-              </p>
-            ) : null}
-          </div>
-        </div>
-        <div className="flex flex-wrap gap-2">
-          <button type="button" className="retro-button-alt px-3 py-1.5 text-xs font-black" onClick={addField}>
-            + Field
-          </button>
-          <button type="button" className="retro-button-alt px-3 py-1.5 text-xs font-black" onClick={resetDefault}>
-            Reset default
-          </button>
-        </div>
-      </div>
-      <div className="space-y-3">
-        {fields.map((field, index) => (
-          <div
-            key={rowKeys[index] ?? `row-fallback-${index}`}
-            className="grid gap-2 rounded-lg border-2 border-black/10 bg-white/80 p-3 sm:grid-cols-2 lg:grid-cols-12 lg:items-end"
-          >
-            <label className="text-xs font-bold lg:col-span-2">
-              Id (kunci)
-              <input
-                className="retro-input mt-1 font-mono text-xs"
-                value={field.id}
-                onChange={(e) => {
-                  let v = e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, "");
-                  if (v.length > 0 && !/^[a-z]/.test(v)) {
-                    v = `f_${v.replace(/^_+/, "")}`;
-                  }
-                  updateAt(index, { id: v });
-                }}
-                spellCheck={false}
-                placeholder="nama_field"
-              />
-              <span className="mt-1 block text-[10px] font-semibold text-black/45">
-                Huruf kecil di awal, lalu huruf/angka/_ — contoh: email, budget_2025. Jangan dikosongkan.
-              </span>
-            </label>
-            <label className="text-xs font-bold lg:col-span-2">
-              Label
-              <input
-                className="retro-input mt-1"
-                value={field.label}
-                onChange={(e) => updateAt(index, { label: e.target.value })}
-              />
-            </label>
-            <label className="text-xs font-bold lg:col-span-2">
-              Tipe
-              <select
-                className="retro-input mt-1"
-                value={field.type}
-                onChange={(e) => updateAt(index, { type: e.target.value as LeadFieldType })}
-              >
-                {TYPE_OPTIONS.map((o) => (
-                  <option key={o.value} value={o.value}>
-                    {o.label}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label className="flex items-center gap-2 text-xs font-bold lg:col-span-2">
-              <input
-                type="checkbox"
-                checked={field.required}
-                onChange={(e) => updateAt(index, { required: e.target.checked })}
-                className="h-4 w-4 accent-[var(--brand-primary)]"
-              />
-              Wajib isi
-            </label>
-            <label className="text-xs font-bold lg:col-span-3">
-              Placeholder
-              <input
-                className="retro-input mt-1"
-                value={field.placeholder ?? ""}
-                onChange={(e) => updateAt(index, { placeholder: e.target.value || undefined })}
-              />
-            </label>
-            {field.type === "text" || field.type === "textarea" ? (
-              <label className="text-xs font-bold lg:col-span-1">
-                Min len
+    <div className="space-y-3">
+      {parseDetail ? (
+        <p role="alert" className="rounded-lg border-2 border-amber-600 bg-amber-50 px-3 py-2 text-xs font-bold text-amber-900">
+          Belum bisa disimpan: {parseDetail}
+        </p>
+      ) : null}
+
+      <ol className="space-y-2">
+        {fields.map((field, index) => {
+          const key = rowKeys[index] ?? `row-fallback-${index}`;
+          const open = openRows.has(key);
+          return (
+            <li key={key} className="set-field" data-open={open}>
+              <div className="set-field-main">
+                <span className="set-field-num" aria-hidden>
+                  {index + 1}
+                </span>
                 <input
-                  type="number"
-                  min={1}
-                  className="retro-input mt-1"
-                  value={field.minLength ?? ""}
-                  onChange={(e) => {
-                    const v = e.target.value;
-                    updateAt(index, {
-                      minLength: v === "" ? undefined : Math.max(1, Number.parseInt(v, 10) || 1),
-                    });
-                  }}
+                  className="retro-input py-2 text-sm font-semibold"
+                  aria-label={`Pertanyaan ${index + 1}: label`}
+                  value={field.label}
+                  onChange={(e) => updateAt(index, { label: e.target.value })}
                 />
-              </label>
-            ) : (
-              <span className="hidden lg:col-span-1" />
-            )}
-            <div className="flex flex-wrap gap-1 lg:col-span-12 lg:justify-end">
-              <button
-                type="button"
-                className="retro-button-alt px-2 py-1 text-[10px] font-black"
-                onClick={() => move(index, -1)}
-                disabled={index === 0}
-              >
-                ↑
-              </button>
-              <button
-                type="button"
-                className="retro-button-alt px-2 py-1 text-[10px] font-black"
-                onClick={() => move(index, 1)}
-                disabled={index === fields.length - 1}
-              >
-                ↓
-              </button>
-              <button
-                type="button"
-                className="retro-button-alt px-2 py-1 text-[10px] font-black text-red-700"
-                onClick={() => removeAt(index)}
-                disabled={fields.length <= 1}
-              >
-                Hapus
-              </button>
-            </div>
-          </div>
-        ))}
+                <select
+                  className="retro-input py-2 text-sm"
+                  aria-label={`Pertanyaan ${index + 1}: tipe jawaban`}
+                  value={field.type}
+                  onChange={(e) => updateAt(index, { type: e.target.value as LeadFieldType })}
+                >
+                  {TYPE_OPTIONS.map((o) => (
+                    <option key={o.value} value={o.value}>
+                      {o.label}
+                    </option>
+                  ))}
+                </select>
+                <label className="admin-switch text-xs font-bold text-black/70">
+                  <input
+                    type="checkbox"
+                    checked={field.required}
+                    onChange={(e) => updateAt(index, { required: e.target.checked })}
+                  />
+                  <span className="admin-switch-track" aria-hidden />
+                  Wajib
+                </label>
+                <div className="flex items-center gap-1 justify-self-end">
+                  <button
+                    type="button"
+                    className="admin-icon-btn"
+                    onClick={() => move(index, -1)}
+                    disabled={index === 0}
+                    aria-label={`Naikkan pertanyaan ${index + 1}`}
+                  >
+                    ↑
+                  </button>
+                  <button
+                    type="button"
+                    className="admin-icon-btn"
+                    onClick={() => move(index, 1)}
+                    disabled={index === fields.length - 1}
+                    aria-label={`Turunkan pertanyaan ${index + 1}`}
+                  >
+                    ↓
+                  </button>
+                  <button
+                    type="button"
+                    className="admin-icon-btn w-auto px-2 text-xs"
+                    onClick={() => toggleOpen(key)}
+                    aria-expanded={open}
+                  >
+                    {open ? "Tutup" : "Detail"}
+                  </button>
+                  <button
+                    type="button"
+                    className="admin-icon-btn admin-icon-btn--danger"
+                    onClick={() => removeAt(index)}
+                    disabled={fields.length <= 1}
+                    aria-label={`Hapus pertanyaan ${index + 1}`}
+                    title="Hapus"
+                  >
+                    ×
+                  </button>
+                </div>
+              </div>
+              {open ? (
+                <div className="grid gap-3 border-t border-dashed border-black/15 p-3 sm:grid-cols-[minmax(0,1fr)_8rem_16rem]">
+                  <label className="set-mini-label">
+                    Contoh isian (placeholder)
+                    <input
+                      className="retro-input mt-1 py-2 text-sm"
+                      value={field.placeholder ?? ""}
+                      onChange={(e) => updateAt(index, { placeholder: e.target.value || undefined })}
+                    />
+                  </label>
+                  {field.type === "text" || field.type === "textarea" ? (
+                    <label className="set-mini-label">
+                      Min. karakter
+                      <input
+                        type="number"
+                        min={1}
+                        className="retro-input mt-1 py-2 text-sm"
+                        value={field.minLength ?? ""}
+                        onChange={(e) => {
+                          const v = e.target.value;
+                          updateAt(index, {
+                            minLength: v === "" ? undefined : Math.max(1, Number.parseInt(v, 10) || 1),
+                          });
+                        }}
+                      />
+                    </label>
+                  ) : (
+                    <span className="hidden sm:block" />
+                  )}
+                  <label className="set-mini-label">
+                    ID teknis
+                    <input
+                      className="retro-input mt-1 py-2 font-mono text-xs"
+                      value={field.id}
+                      onChange={(e) => {
+                        let v = e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, "");
+                        if (v.length > 0 && !/^[a-z]/.test(v)) {
+                          v = `f_${v.replace(/^_+/, "")}`;
+                        }
+                        updateAt(index, { id: v });
+                      }}
+                      spellCheck={false}
+                      placeholder="nama_field"
+                    />
+                    <span className="mt-1 block font-normal text-black/50">
+                      Kolom di tabel Leads. Jangan diubah kalau sudah ada lead masuk.
+                    </span>
+                  </label>
+                </div>
+              ) : null}
+            </li>
+          );
+        })}
+      </ol>
+
+      <div className="flex flex-wrap items-center gap-4 pt-1">
+        <button type="button" className="retro-button-alt px-4 py-2 text-xs" onClick={addField}>
+          Tambah pertanyaan
+        </button>
+        <button
+          type="button"
+          className="text-xs font-bold text-black/55 underline underline-offset-2 hover:text-black"
+          onClick={resetDefault}
+        >
+          Kembalikan ke pertanyaan bawaan
+        </button>
       </div>
     </div>
   );

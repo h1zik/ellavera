@@ -102,6 +102,18 @@ model SiteSettings {
   seoKeywords      String?
   /** ID Meta (Facebook) Pixel — angka. Jika diisi, pixel + PageView dipasang di semua halaman. */
   metaPixelId      String?
+  /** Pixel ID OpenAI (ChatGPT Ads) dari Ads Manager → Conversions. */
+  openaiPixelId    String?
+  /** Google tag: GA4 (G-…) dan/atau Google Ads (AW-…), pisahkan koma. */
+  googleTagIds     String?
+  /** Google Ads conversion "send_to" untuk Lead (kirim brief), mis. AW-123456789/AbC-dEfGh. */
+  googleAdsLeadSendTo    String?
+  /** Google Ads conversion "send_to" untuk Contact (klik WhatsApp). */
+  googleAdsContactSendTo String?
+  /** Google Tag Manager container (GTM-…) — untuk platform lain tanpa ubah kode. */
+  gtmContainerId   String?
+  /** TikTok Pixel ID. */
+  tiktokPixelId    String?
   heroImageUrl       String?
   /** Logo halaman login admin (URL upload atau path). */
   adminLogoUrl       String?

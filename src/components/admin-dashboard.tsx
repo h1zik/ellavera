@@ -4,11 +4,9 @@ import { Content, Lead, Section, SectionType } from "@prisma/client";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { AdminSiteSettings } from "@/lib/admin-settings";
-import { ImageUploadField } from "@/components/admin/image-upload-field";
 import { ContentBlockEditor } from "@/components/admin/content-block-editor";
 import { ClientShowcaseEditor } from "@/components/admin/client-showcase-editor";
-import { TalentGalleryEditor } from "@/components/admin/talent-gallery-editor";
-import { LeadFormFieldsEditor } from "@/components/admin/lead-form-fields-editor";
+import { SettingsPanel, type SettingsTab } from "@/components/admin/settings-panel";
 import { defaultKindForSection, defaultValueForKind } from "@/lib/admin-content-kinds";
 import { toWhatsAppHref } from "@/lib/contact-links";
 import type { LeadFormField } from "@/lib/lead-form-config";
@@ -38,17 +36,6 @@ const SECTION_TYPE_OPTIONS: SectionType[] = [
   SectionType.FAQ,
   SectionType.CONTACT,
 ];
-
-const SETTINGS_GROUPS = [
-  { id: "set-identitas", label: "Identitas" },
-  { id: "set-warna", label: "Warna" },
-  { id: "set-gambar", label: "Gambar & ikon" },
-  { id: "set-leads", label: "Form & email leads" },
-  { id: "set-kontak", label: "Kontak" },
-  { id: "set-seo", label: "SEO" },
-  { id: "set-tracking", label: "Pixel" },
-  { id: "set-purpose", label: "Brand purpose" },
-] as const;
 
 /** Maps tanpa skema → https://… agar lolos validasi API. */
 function normalizeHttpsUrl(raw: string): string {
@@ -83,11 +70,6 @@ function csvCell(value: string): string {
   return /[",\n;]/.test(value) ? `"${value.replace(/"/g, '""')}"` : value;
 }
 
-/** Hex 6 digit (#RRGGBB) — format yang diterima input warna & API. */
-function isHexColor(v: string): boolean {
-  return /^#[0-9a-f]{6}$/i.test(v);
-}
-
 /** Satu layar: pengaturan, hub section, satu section, atau leads. */
 type AdminView = "settings" | "sections-hub" | "leads" | `section:${string}`;
 
@@ -109,71 +91,6 @@ function judulTipeSection(t: SectionType): string {
     [SectionType.CONTACT]: "Kontak",
   };
   return map[t] ?? t;
-}
-
-function CharCount({ value, ideal }: { value: string; ideal: number }) {
-  const over = value.length > ideal;
-  return (
-    <span className={over ? "font-bold text-amber-700" : "font-medium text-black/45"}>
-      {value.length}/{ideal}
-      {over ? " — bisa terpotong" : ""}
-    </span>
-  );
-}
-
-function ColorField({
-  label,
-  usage,
-  value,
-  defaultValue,
-  onChange,
-}: {
-  label: string;
-  usage: string;
-  value: string;
-  defaultValue: string;
-  onChange: (value: string) => void;
-}) {
-  // Teks hex boleh setengah diketik; baru dikirim ke state saat formatnya valid.
-  const [draft, setDraft] = useState(value);
-  useEffect(() => setDraft(value), [value]);
-
-  return (
-    <div className="space-y-1.5 rounded-xl border-2 border-black/10 bg-white/70 p-3">
-      <p className="text-sm font-bold">{label}</p>
-      <p className="text-xs text-black/55">{usage}</p>
-      <div className="flex items-center gap-2">
-        <input
-          type="color"
-          aria-label={`${label} — pilih warna`}
-          className="h-11 w-14 shrink-0 cursor-pointer rounded-lg border-2 border-black/15 bg-white p-0.5"
-          value={isHexColor(value) ? value : defaultValue}
-          onChange={(e) => onChange(e.target.value)}
-        />
-        <input
-          className="retro-input py-2 font-mono text-sm uppercase"
-          aria-label={`${label} — kode hex`}
-          value={draft}
-          maxLength={7}
-          onChange={(e) => {
-            const next = e.target.value.startsWith("#") ? e.target.value : `#${e.target.value}`;
-            setDraft(next);
-            if (isHexColor(next)) onChange(next);
-          }}
-          onBlur={() => setDraft(value)}
-        />
-      </div>
-      {value.toLowerCase() !== defaultValue.toLowerCase() ? (
-        <button
-          type="button"
-          className="text-[11px] font-bold text-black/55 underline"
-          onClick={() => onChange(defaultValue)}
-        >
-          Kembalikan ke {defaultValue}
-        </button>
-      ) : null}
-    </div>
-  );
 }
 
 function emptyContentRow(
@@ -203,8 +120,10 @@ export function AdminDashboard({ initialSettings, initialSections, leads }: Prop
   /** Password SMTP tidak pernah dikirim ke browser; kosong = biarkan yang tersimpan. */
   const [smtpPassword, setSmtpPassword] = useState("");
   const [smtpPasswordClear, setSmtpPasswordClear] = useState(false);
-  const [testingEmail, setTestingEmail] = useState(false);
   const [savingSettings, setSavingSettings] = useState(false);
+  const [settingsTab, setSettingsTab] = useState<SettingsTab>("merek");
+  /** Error validasi dari server per field — ditampilkan di bawah kolomnya. */
+  const [settingsErrors, setSettingsErrors] = useState<Record<string, string[]>>({});
   const [savingSections, setSavingSections] = useState(false);
   /** Snapshot terakhir yang tersimpan di server — pembanding untuk indikator "belum disimpan". */
   const [savedSettingsJson, setSavedSettingsJson] = useState(() =>
@@ -317,6 +236,12 @@ export function AdminDashboard({ initialSettings, initialSections, leads }: Prop
       seoDescription: settings.seoDescription ?? "",
       seoKeywords: settings.seoKeywords ?? "",
       metaPixelId: settings.metaPixelId ?? "",
+      openaiPixelId: settings.openaiPixelId ?? "",
+      googleTagIds: settings.googleTagIds ?? "",
+      googleAdsLeadSendTo: settings.googleAdsLeadSendTo ?? "",
+      googleAdsContactSendTo: settings.googleAdsContactSendTo ?? "",
+      gtmContainerId: settings.gtmContainerId ?? "",
+      tiktokPixelId: settings.tiktokPixelId ?? "",
       heroImageUrl: settings.heroImageUrl ?? "",
       adminLogoUrl: settings.adminLogoUrl ?? "",
       faviconUrl: settings.faviconUrl ?? "",
@@ -344,7 +269,8 @@ export function AdminDashboard({ initialSettings, initialSections, leads }: Prop
       setSavedSettingsJson(JSON.stringify(next));
       setSmtpPassword("");
       setSmtpPasswordClear(false);
-      pushToast("Pengaturan berhasil disimpan.", "success");
+      setSettingsErrors({});
+      pushToast("Pengaturan disimpan.", "success");
       router.refresh();
       return;
     }
@@ -356,10 +282,10 @@ export function AdminDashboard({ initialSettings, initialSections, leads }: Prop
         formErrors?: string[];
         error?: string;
       };
-      if (err.fieldErrors && Object.keys(err.fieldErrors).length > 0) {
-        detail = Object.entries(err.fieldErrors)
-          .map(([k, v]) => `${k}: ${v?.join(", ")}`)
-          .join(" · ");
+      const fieldCount = err.fieldErrors ? Object.keys(err.fieldErrors).length : 0;
+      if (fieldCount > 0) {
+        setSettingsErrors(err.fieldErrors!);
+        detail = `Belum tersimpan: ${fieldCount} kolom perlu diperbaiki (ditandai merah).`;
       } else if (err.formErrors?.length) {
         detail = err.formErrors.join(" · ");
       } else if (err.error) {
@@ -1043,522 +969,25 @@ export function AdminDashboard({ initialSettings, initialSections, leads }: Prop
           ) : null}
         </div>
         {activeView === "settings" ? (
-      <section className="admin-content-card">
-        <h2 className="admin-section-heading">Pengaturan situs</h2>
-        <p className="mt-2 max-w-2xl text-sm text-black/65">
-          Ubah per blok, lalu simpan — data baru tampil di beranda setelah berhasil disimpan.
-        </p>
-        <nav className="admin-jump" aria-label="Lompat ke grup pengaturan">
-          {SETTINGS_GROUPS.map((g) => (
-            <a key={g.id} href={`#${g.id}`} className="admin-jump-link">
-              {g.label}
-            </a>
-          ))}
-        </nav>
-        <div className="mt-6 flex flex-col gap-8">
-          <div id="set-identitas" className="admin-form-group scroll-mt-6 space-y-3">
-            <h3 className="admin-form-group-title">Identitas & tagline</h3>
-            <div className="grid gap-3 md:grid-cols-2">
-              <label className="admin-label">
-                Nama situs
-                <input
-                  className="retro-input mt-1"
-                  value={settings.siteName}
-                  onChange={(e) => setSettings((prev) => ({ ...prev, siteName: e.target.value }))}
-                  placeholder="Ellavera"
-                />
-              </label>
-              <label className="admin-label">
-                Tagline (di bawah logo header)
-                <input
-                  className="retro-input mt-1"
-                  value={settings.tagline}
-                  onChange={(e) => setSettings((prev) => ({ ...prev, tagline: e.target.value }))}
-                  placeholder="Maklon kosmetik buat Gen-Z & brand owner"
-                />
-              </label>
-            </div>
-            <div className="space-y-3 rounded-xl border-2 border-black/10 bg-white/60 p-4">
-              <div>
-                <p className="text-sm font-bold">Teks kecil (eyebrow)</p>
-                <p className="text-xs font-semibold text-black/55">
-                  Baris huruf kapital kecil di atas logo header & di atas judul hero. Kosongkan
-                  kalau mau disembunyikan.
-                </p>
-              </div>
-              <label className="block text-xs font-bold text-black/70">
-                Header beranda (di atas logo)
-                <input
-                  className="retro-input mt-1"
-                  value={settings.headerEyebrow ?? ""}
-                  onChange={(e) =>
-                    setSettings((prev) => ({ ...prev, headerEyebrow: e.target.value }))
-                  }
-                  placeholder="Maklon · Gen-Z · Unisex"
-                  maxLength={120}
-                />
-              </label>
-              <label className="block text-xs font-bold text-black/70">
-                Hero (di atas judul besar)
-                <input
-                  className="retro-input mt-1"
-                  value={settings.heroKicker ?? ""}
-                  onChange={(e) =>
-                    setSettings((prev) => ({ ...prev, heroKicker: e.target.value }))
-                  }
-                  placeholder="Retro · Playful · High-energy"
-                  maxLength={120}
-                />
-              </label>
-            </div>
-            <div className="space-y-2 rounded-xl border-2 border-black/10 bg-white/60 p-4">
-              <p className="text-sm font-bold">Logo header beranda</p>
-              <p className="text-xs font-semibold text-black/55">
-                Jika diisi, teks nama situs di atas halaman diganti logo ini (teks nama tetap dipakai
-                untuk alt & SEO).
-              </p>
-              <input
-                className="retro-input"
-                value={settings.siteLogoUrl ?? ""}
-                onChange={(e) =>
-                  setSettings((prev) => ({ ...prev, siteLogoUrl: e.target.value }))
-                }
-                placeholder="URL logo (atau upload)"
-              />
-              <ImageUploadField
-                label="Upload logo beranda"
-                currentUrl={settings.siteLogoUrl ?? ""}
-                onUrlChange={(url) =>
-                  setSettings((prev) => ({ ...prev, siteLogoUrl: url }))
-                }
-              />
-            </div>
-          </div>
-
-          <div id="set-warna" className="admin-form-group scroll-mt-6 space-y-3">
-            <h3 className="admin-form-group-title">Warna tema</h3>
-            <div className="grid gap-3 sm:grid-cols-3">
-              {(
-                [
-                  ["primaryColor", "Warna utama", "Tombol, bayangan kartu", "#26CCC2"],
-                  ["secondaryColor", "Warna sekunder", "Latar kartu section", "#FAE3C7"],
-                  ["accentColor", "Aksen", "Tombol kedua, sorotan", "#FFB76C"],
-                ] as const
-              ).map(([key, label, usage, fallback]) => (
-                <ColorField
-                  key={key}
-                  label={label}
-                  usage={usage}
-                  defaultValue={fallback}
-                  value={settings[key]}
-                  onChange={(v) => setSettings((prev) => ({ ...prev, [key]: v }))}
-                />
-              ))}
-            </div>
-          </div>
-
-          <div id="set-gambar" className="admin-form-group scroll-mt-6 space-y-4">
-            <h3 className="admin-form-group-title">Gambar & ikon</h3>
-            <div className="space-y-2 rounded-xl border-2 border-black/10 bg-white/60 p-4">
-              <p className="text-sm font-bold">Gambar hero</p>
-              <input
-                className="retro-input"
-                value={settings.heroImageUrl ?? ""}
-                onChange={(e) =>
-                  setSettings((prev) => ({ ...prev, heroImageUrl: e.target.value }))
-                }
-                placeholder="URL gambar hero (atau upload di bawah)"
-              />
-              <ImageUploadField
-                label="Upload gambar hero"
-                currentUrl={settings.heroImageUrl ?? ""}
-                onUrlChange={(url) =>
-                  setSettings((prev) => ({ ...prev, heroImageUrl: url }))
-                }
-              />
-            </div>
-            <div className="space-y-2 rounded-xl border-2 border-black/10 bg-white/60 p-4">
-              <p className="text-sm font-bold">Logo halaman login admin</p>
-              <input
-                className="retro-input"
-                value={settings.adminLogoUrl ?? ""}
-                onChange={(e) =>
-                  setSettings((prev) => ({ ...prev, adminLogoUrl: e.target.value }))
-                }
-                placeholder="URL logo (atau upload)"
-              />
-              <ImageUploadField
-                label="Upload logo admin"
-                currentUrl={settings.adminLogoUrl ?? ""}
-                onUrlChange={(url) =>
-                  setSettings((prev) => ({ ...prev, adminLogoUrl: url }))
-                }
-              />
-            </div>
-            <div className="space-y-2 rounded-xl border-2 border-black/10 bg-white/60 p-4">
-              <p className="text-sm font-bold">Favicon situs</p>
-              <p className="text-xs font-semibold text-black/55">
-                Tampil di tab browser. Format .ico, .png, atau .svg (URL penuh).
-              </p>
-              <input
-                className="retro-input"
-                value={settings.faviconUrl ?? ""}
-                onChange={(e) =>
-                  setSettings((prev) => ({ ...prev, faviconUrl: e.target.value }))
-                }
-                placeholder="URL favicon"
-              />
-              <ImageUploadField
-                label="Upload favicon"
-                currentUrl={settings.faviconUrl ?? ""}
-                onUrlChange={(url) =>
-                  setSettings((prev) => ({ ...prev, faviconUrl: url }))
-                }
-              />
-            </div>
-          </div>
-
-          <div id="set-leads" className="admin-form-group scroll-mt-6 space-y-4">
-            <h3 className="admin-form-group-title">Galeri & form leads</h3>
-            <TalentGalleryEditor
-              json={settings.talentGalleryJson}
-              onChange={(talentGalleryJson) =>
-                setSettings((prev) => ({ ...prev, talentGalleryJson }))
-              }
-            />
-            <LeadFormFieldsEditor
-              json={settings.leadFormFieldsJson}
-              onChange={(leadFormFieldsJson) =>
-                setSettings((prev) => ({ ...prev, leadFormFieldsJson }))
-              }
-            />
-            <div className="space-y-2 rounded-xl border-2 border-black/10 bg-white/60 p-4">
-              <p className="text-sm font-bold">Email penerima notifikasi lead</p>
-              <p className="text-xs font-semibold text-black/55">
-                Setiap kali ada yang submit form, isinya dikirim ke alamat ini. Boleh lebih dari
-                satu — pisahkan dengan koma. Kalau dikosongkan, dipakai “Email kontak” di blok
-                Kontak.
-              </p>
-              <input
-                className="retro-input"
-                value={settings.leadNotifyEmail ?? ""}
-                onChange={(e) =>
-                  setSettings((prev) => ({ ...prev, leadNotifyEmail: e.target.value }))
-                }
-                placeholder="sales@ellavera.id, owner@ellavera.id"
-                inputMode="email"
-                autoComplete="email"
-              />
-              <p className="text-xs font-semibold text-black/45">
-                Lead tetap tersimpan di tab Leads walau email gagal terkirim.
-              </p>
-            </div>
-
-            <div className="space-y-3 rounded-xl border-2 border-black/10 bg-white/60 p-4">
-              <div>
-                <p className="text-sm font-bold">Server pengirim (SMTP)</p>
-                <p className="text-xs font-semibold text-black/55">
-                  Akun email yang dipakai untuk mengirim notifikasi. Gmail/Google Workspace:
-                  host <code>smtp.gmail.com</code>, port <code>587</code>, password pakai{" "}
-                  <strong>App Password</strong> 16 karakter (bukan password login). Kalau blok ini
-                  dikosongkan, sistem memakai konfigurasi SMTP dari environment server (kalau ada).
-                </p>
-              </div>
-              <div className="grid gap-3 md:grid-cols-2">
-                <label className="block text-xs font-bold text-black/70">
-                  Host SMTP
-                  <input
-                    className="retro-input mt-1 font-normal"
-                    value={settings.smtpHost ?? ""}
-                    onChange={(e) =>
-                      setSettings((prev) => ({ ...prev, smtpHost: e.target.value }))
-                    }
-                    placeholder="smtp.gmail.com"
-                    autoComplete="off"
-                  />
-                </label>
-                <label className="block text-xs font-bold text-black/70">
-                  Port
-                  <input
-                    className="retro-input mt-1 font-normal"
-                    value={settings.smtpPort == null ? "" : String(settings.smtpPort)}
-                    onChange={(e) => {
-                      const raw = e.target.value.replace(/[^0-9]/g, "");
-                      setSettings((prev) => ({
-                        ...prev,
-                        smtpPort: raw ? Number.parseInt(raw, 10) : null,
-                      }));
-                    }}
-                    placeholder="587"
-                    inputMode="numeric"
-                  />
-                </label>
-                <label className="block text-xs font-bold text-black/70">
-                  Username
-                  <input
-                    className="retro-input mt-1 font-normal"
-                    value={settings.smtpUser ?? ""}
-                    onChange={(e) =>
-                      setSettings((prev) => ({ ...prev, smtpUser: e.target.value }))
-                    }
-                    placeholder="akun@gmail.com"
-                    autoComplete="off"
-                  />
-                </label>
-                <label className="block text-xs font-bold text-black/70">
-                  Koneksi aman (SSL/TLS)
-                  <select
-                    className="retro-input mt-1 font-normal"
-                    value={
-                      settings.smtpSecure == null ? "auto" : settings.smtpSecure ? "true" : "false"
-                    }
-                    onChange={(e) =>
-                      setSettings((prev) => ({
-                        ...prev,
-                        smtpSecure:
-                          e.target.value === "auto" ? null : e.target.value === "true",
-                      }))
-                    }
-                  >
-                    <option value="auto">Otomatis (SSL kalau port 465)</option>
-                    <option value="true">Selalu SSL (port 465)</option>
-                    <option value="false">STARTTLS (port 587)</option>
-                  </select>
-                </label>
-              </div>
-              <label className="block text-xs font-bold text-black/70">
-                Password / App Password
-                <input
-                  type="password"
-                  className="retro-input mt-1 font-normal"
-                  value={smtpPassword}
-                  onChange={(e) => {
-                    setSmtpPassword(e.target.value);
-                    if (e.target.value) setSmtpPasswordClear(false);
-                  }}
-                  placeholder={
-                    settings.smtpPasswordSet
-                      ? "•••••••••••• (tersimpan — isi hanya kalau mau ganti)"
-                      : "Belum diisi"
-                  }
-                  autoComplete="new-password"
-                  disabled={smtpPasswordClear}
-                />
-                <span className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs font-semibold text-black/55">
-                  <span>
-                    Status:{" "}
-                    {settings.smtpPasswordSet ? "tersimpan" : "belum diisi"} ·{" "}
-                    {settings.smtpPasswordEncrypted
-                      ? "terenkripsi di database"
-                      : "belum terenkripsi (set SMTP_CRYPT_KEY di server)"}
-                  </span>
-                  {settings.smtpPasswordSet ? (
-                    <label className="inline-flex items-center gap-1.5 font-bold text-black/70">
-                      <input
-                        type="checkbox"
-                        checked={smtpPasswordClear}
-                        onChange={(e) => {
-                          setSmtpPasswordClear(e.target.checked);
-                          if (e.target.checked) setSmtpPassword("");
-                        }}
-                      />
-                      Hapus password saat simpan
-                    </label>
-                  ) : null}
-                </span>
-              </label>
-              <label className="block text-xs font-bold text-black/70">
-                Alamat pengirim (From)
-                <input
-                  className="retro-input mt-1 font-normal"
-                  value={settings.smtpFrom ?? ""}
-                  onChange={(e) =>
-                    setSettings((prev) => ({ ...prev, smtpFrom: e.target.value }))
-                  }
-                  placeholder='Ellavera Website <no-reply@ellavera.id>'
-                />
-                <span className="mt-1 block text-xs font-semibold text-black/55">
-                  Kosong = pakai username di atas. Banyak provider menolak alamat pengirim yang
-                  berbeda dari akun SMTP.
-                </span>
-              </label>
-              <div className="flex flex-wrap items-center gap-3 border-t-2 border-dashed border-black/10 pt-3">
-                <button
-                  type="button"
-                  className="retro-button-alt px-4 py-2 text-xs font-black disabled:opacity-60"
-                  disabled={testingEmail}
-                  onClick={async () => {
-                    setTestingEmail(true);
-                    try {
-                      const res = await fetch("/api/admin/test-email", {
-                        method: "POST",
-                        credentials: "same-origin",
-                      });
-                      const data = (await res.json()) as { ok?: boolean; message?: string };
-                      pushToast(
-                        data.message || (res.ok ? "Email tes terkirim." : "Gagal kirim email tes."),
-                        res.ok ? "success" : "error",
-                      );
-                    } catch {
-                      pushToast("Gagal menghubungi server.", "error");
-                    } finally {
-                      setTestingEmail(false);
-                    }
-                  }}
-                >
-                  {testingEmail ? "Mengirim…" : "Kirim email tes"}
-                </button>
-                <span className="text-xs font-semibold text-black/55">
-                  Simpan dulu, baru tes — tombol ini memakai data yang sudah tersimpan.
-                </span>
-              </div>
-            </div>
-          </div>
-
-          <div id="set-kontak" className="admin-form-group scroll-mt-6 space-y-3">
-            <h3 className="admin-form-group-title">Kontak di halaman publik</h3>
-            <div className="grid gap-3 md:grid-cols-2">
-              <label className="admin-label">
-                Email kontak
-                <input
-                  className="retro-input mt-1 font-normal"
-                  type="email"
-                  value={settings.contactEmail ?? ""}
-                  onChange={(e) =>
-                    setSettings((prev) => ({ ...prev, contactEmail: e.target.value }))
-                  }
-                  placeholder="halo@ellavera.id"
-                />
-              </label>
-              <label className="font-bold">
-                Nomor WhatsApp (tampil di halaman kontak)
-                <input
-                  className="retro-input mt-1 font-normal"
-                  value={settings.contactWhatsapp ?? ""}
-                  onChange={(e) =>
-                    setSettings((prev) => ({ ...prev, contactWhatsapp: e.target.value }))
-                  }
-                  placeholder="+6281234567890 atau 081234567890"
-                  inputMode="tel"
-                  autoComplete="tel"
-                />
-                <span className="mt-1 block text-xs font-semibold text-black/55">
-                  Boleh pakai +62, 08…, atau spasi; link wa.me dibuat otomatis.
-                </span>
-              </label>
-            </div>
-            <label className="admin-label">
-              Alamat kantor / pabrik
-              <textarea
-                className="retro-input mt-1 min-h-[88px] font-normal"
-                value={settings.locationAddress ?? ""}
-                onChange={(e) =>
-                  setSettings((prev) => ({ ...prev, locationAddress: e.target.value || null }))
-                }
-                placeholder="Jl. …, Kota, Provinsi"
-              />
-            </label>
-            <label className="font-bold">
-              Link Google Maps (tombol di section kontak)
-              <input
-                className="retro-input mt-1 font-normal"
-                value={settings.mapsUrl ?? ""}
-                onChange={(e) =>
-                  setSettings((prev) => ({ ...prev, mapsUrl: e.target.value || null }))
-                }
-                placeholder="https://maps.google.com/... atau maps.app.goo.gl/..."
-                inputMode="url"
-              />
-              <span className="mt-1 block text-xs font-semibold text-black/55">
-                Tempel URL lengkap; kalau tanpa https:// akan ditambahkan otomatis saat simpan.
-              </span>
-            </label>
-          </div>
-
-          <div id="set-seo" className="admin-form-group scroll-mt-6 space-y-3">
-            <h3 className="admin-form-group-title">SEO</h3>
-            <label className="admin-label">
-              <span className="flex justify-between gap-2">
-                Judul di Google & tab browser
-                <CharCount value={settings.seoTitle ?? ""} ideal={60} />
-              </span>
-              <input
-                className="retro-input mt-1 font-normal"
-                value={settings.seoTitle ?? ""}
-                onChange={(e) => setSettings((prev) => ({ ...prev, seoTitle: e.target.value }))}
-                placeholder="Ellavera | Maklon kosmetik Gen-Z"
-              />
-            </label>
-            <label className="admin-label">
-              <span className="flex justify-between gap-2">
-                Deskripsi di hasil pencarian
-                <CharCount value={settings.seoDescription ?? ""} ideal={160} />
-              </span>
-              <textarea
-                className="retro-input mt-1 min-h-[80px] font-normal"
-                value={settings.seoDescription ?? ""}
-                onChange={(e) =>
-                  setSettings((prev) => ({ ...prev, seoDescription: e.target.value }))
-                }
-                placeholder="Satu-dua kalimat yang menjelaskan Ellavera"
-              />
-            </label>
-            <label className="admin-label">
-              Kata kunci (pisahkan dengan koma)
-              <input
-                className="retro-input mt-1 font-normal"
-                value={settings.seoKeywords ?? ""}
-                onChange={(e) =>
-                  setSettings((prev) => ({ ...prev, seoKeywords: e.target.value }))
-                }
-                placeholder="maklon kosmetik, private label, skincare"
-              />
-            </label>
-          </div>
-
-          <div id="set-tracking" className="admin-form-group scroll-mt-6 space-y-3">
-            <h3 className="admin-form-group-title">Tracking &amp; iklan</h3>
-            <label className="font-bold">
-              Meta (Facebook) Pixel ID
-              <input
-                className="retro-input mt-1 font-normal"
-                value={settings.metaPixelId ?? ""}
-                onChange={(e) =>
-                  setSettings((prev) => ({ ...prev, metaPixelId: e.target.value }))
-                }
-                placeholder="contoh: 1234567890123456"
-                inputMode="numeric"
-              />
-              <span className="mt-1 block text-xs font-semibold text-black/55">
-                Tempel ID Pixel dari Meta Events Manager (hanya angka, ~15-16 digit). Kosongkan untuk
-                mematikan pixel. Saat diisi, pixel + event PageView, Lead (kirim brief), dan Contact
-                (klik WhatsApp) otomatis aktif.
-              </span>
-            </label>
-          </div>
-
-          <div id="set-purpose" className="admin-form-group scroll-mt-6 space-y-3">
-            <h3 className="admin-form-group-title">Brand purpose</h3>
-            <label className="admin-label">
-              Teks kecil di footer
-              <textarea
-                className="retro-input mt-1 min-h-[100px] font-normal"
-                value={settings.brandPurpose}
-                onChange={(e) =>
-                  setSettings((prev) => ({ ...prev, brandPurpose: e.target.value }))
-                }
-                placeholder="Misi singkat Ellavera"
-              />
-            </label>
-          </div>
-        </div>
-        {renderSaveBar({
-          dirty: settingsDirty,
-          saving: savingSettings,
-          label: "Simpan pengaturan",
-          onSave: saveSettings,
-        })}
-      </section>
+          <SettingsPanel
+            settings={settings}
+            setSettings={setSettings}
+            savedSettingsJson={savedSettingsJson}
+            smtpPassword={smtpPassword}
+            setSmtpPassword={setSmtpPassword}
+            smtpPasswordClear={smtpPasswordClear}
+            setSmtpPasswordClear={setSmtpPasswordClear}
+            fieldErrors={settingsErrors}
+            tab={settingsTab}
+            onTabChange={setSettingsTab}
+            pushToast={pushToast}
+            footer={renderSaveBar({
+              dirty: settingsDirty,
+              saving: savingSettings,
+              label: "Simpan pengaturan",
+              onSave: saveSettings,
+            })}
+          />
         ) : null}
 
         {activeView === "sections-hub" ? (

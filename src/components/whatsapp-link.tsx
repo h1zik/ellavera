@@ -1,7 +1,4 @@
-"use client";
-
 import type { ReactNode } from "react";
-import { trackContact } from "@/lib/tracking";
 
 type Props = {
   href: string;
@@ -9,7 +6,7 @@ type Props = {
   children: ReactNode;
 };
 
-/** Tautan WhatsApp yang mengirim event konversi Contact (semua platform iklan) saat diklik. */
+/** Tautan WhatsApp di section kontak — klik di-track lewat <ClickTracker> (`whatsapp_contact`). */
 export function WhatsAppLink({ href, className, children }: Props) {
   return (
     <a
@@ -17,7 +14,7 @@ export function WhatsAppLink({ href, className, children }: Props) {
       target="_blank"
       rel="noopener noreferrer"
       className={className}
-      onClick={trackContact}
+      data-track="whatsapp_contact"
     >
       {children}
     </a>

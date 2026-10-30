@@ -62,6 +62,7 @@ export default async function Home() {
                 href={`#${section.slug}`}
                 className="home-sticky-link"
                 data-spy={section.slug}
+                data-track="nav"
               >
                 {section.name}
               </a>
@@ -107,7 +108,12 @@ export default async function Home() {
             </div>
             <nav className="home-nav" aria-label="Navigasi section">
               {sections.map((section) => (
-                <a key={section.id} href={`#${section.slug}`} className="retro-nav-link">
+                <a
+                  key={section.id}
+                  href={`#${section.slug}`}
+                  className="retro-nav-link"
+                  data-track="nav"
+                >
                   {section.name}
                 </a>
               ))}
@@ -147,7 +153,7 @@ export default async function Home() {
                 <ul className="flex flex-wrap gap-2">
                   {sections.map((section) => (
                     <li key={section.id}>
-                      <a href={`#${section.slug}`} className="retro-nav-link text-[11px]">
+                      <a href={`#${section.slug}`} className="retro-nav-link text-[11px]" data-track="nav">
                         {section.name}
                       </a>
                     </li>

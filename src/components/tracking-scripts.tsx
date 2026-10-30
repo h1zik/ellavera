@@ -1,5 +1,10 @@
 import Script from "next/script";
 import {
+  CUSTOM_EVENT_NAME,
+  parseButtonEvents,
+  type ButtonEventsMap,
+} from "@/lib/button-events";
+import {
   TRACKING_ID_PATTERNS as P,
   googleAdsIdFromSendTo,
   parseGoogleTagIds,
@@ -14,10 +19,22 @@ export type TrackingSettings = {
   googleAdsContactSendTo?: string | null;
   gtmContainerId?: string | null;
   tiktokPixelId?: string | null;
+  buttonEventsJson?: string | null;
 };
 
-/** ID sudah tervalidasi regex, tapi tetap di-escape sebagai literal JS. */
-const js = (v: unknown) => JSON.stringify(v);
+/** Nilai sudah tervalidasi, tapi tetap di-escape sebagai literal JS (termasuk `<` agar aman di <script>). */
+const js = (v: unknown) => JSON.stringify(v).replace(/</g, "\\u003c");
+
+/** Pengaturan tombol yang valid saja — entri rusak dilewati, tombolnya pakai default. */
+function validButtonEvents(raw: string | null | undefined): ButtonEventsMap {
+  const out: ButtonEventsMap = {};
+  for (const [key, c] of Object.entries(parseButtonEvents(raw))) {
+    if (c.event === "custom" && !CUSTOM_EVENT_NAME.test(c.customName ?? "")) continue;
+    const sendTo = c.googleAdsSendTo && P.googleAdsSendTo.test(c.googleAdsSendTo) ? c.googleAdsSendTo : undefined;
+    out[key] = { event: c.event, ...(c.customName ? { customName: c.customName } : {}), ...(sendTo ? { googleAdsSendTo: sendTo } : {}) };
+  }
+  return out;
+}
 
 /**
  * Memasang base code semua platform iklan yang diisi di admin (Tracking & iklan).
@@ -32,16 +49,27 @@ export function TrackingScripts({ settings }: { settings?: TrackingSettings | nu
   const adsLead = validTrackingId(settings?.googleAdsLeadSendTo, P.googleAdsSendTo);
   const adsContact = validTrackingId(settings?.googleAdsContactSendTo, P.googleAdsSendTo);
 
+  const buttonEvents = validButtonEvents(settings?.buttonEventsJson);
+  const buttonSendTo = Object.values(buttonEvents)
+    .map((c) => c.googleAdsSendTo)
+    .filter((s): s is string => Boolean(s));
+
   /** Akun Ads dari label konversi ikut di-config walau tidak ditulis di "Google tag ID". */
   const googleIds = Array.from(
     new Set([
       ...parseGoogleTagIds(settings?.googleTagIds).filter((id) => P.googleTag.test(id)),
-      ...[adsLead, adsContact].filter(Boolean).map((s) => googleAdsIdFromSendTo(s!)),
+      ...[adsLead, adsContact, ...buttonSendTo].filter(Boolean).map((s) => googleAdsIdFromSendTo(s!)),
     ]),
   );
 
   return (
     <>
+      {Object.keys(buttonEvents).length > 0 ? (
+        <Script id="button-events-config" strategy="afterInteractive">
+          {`window.__ellaveraButtons = ${js(buttonEvents)};`}
+        </Script>
+      ) : null}
+
       {openaiId ? (
         // Snippet resmi OpenAI Measurement Pixel (developers.openai.com/ads/measurement-pixel).
         <Script id="openai-pixel-base" strategy="afterInteractive">

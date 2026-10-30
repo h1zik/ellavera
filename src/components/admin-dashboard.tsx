@@ -242,6 +242,7 @@ export function AdminDashboard({ initialSettings, initialSections, leads }: Prop
       googleAdsContactSendTo: settings.googleAdsContactSendTo ?? "",
       gtmContainerId: settings.gtmContainerId ?? "",
       tiktokPixelId: settings.tiktokPixelId ?? "",
+      buttonEventsJson: settings.buttonEventsJson ?? "",
       heroImageUrl: settings.heroImageUrl ?? "",
       adminLogoUrl: settings.adminLogoUrl ?? "",
       faviconUrl: settings.faviconUrl ?? "",

@@ -85,10 +85,11 @@ export const getHeadSettings = unstable_cache(
         googleAdsContactSendTo: true,
         gtmContainerId: true,
         tiktokPixelId: true,
+        buttonEventsJson: true,
         siteName: true,
       },
     }),
-  ["head-settings-v2"],
+  ["head-settings-v3"],
   { tags: [LANDING_CACHE_TAG], revalidate: 300 },
 );
 

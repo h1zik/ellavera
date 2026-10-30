@@ -114,6 +114,8 @@ model SiteSettings {
   gtmContainerId   String?
   /** TikTok Pixel ID. */
   tiktokPixelId    String?
+  /** JSON map event iklan per tombol (lihat src/lib/button-events.ts). Kosong = default. */
+  buttonEventsJson String?  @db.Text
   heroImageUrl       String?
   /** Logo halaman login admin (URL upload atau path). */
   adminLogoUrl       String?

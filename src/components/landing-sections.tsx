@@ -35,6 +35,7 @@ function PricelistButton({ link, className }: { link: PricelistLink; className?:
   return (
     <a
       href={link.url}
+      data-track="pricelist"
       target="_blank"
       rel="noopener noreferrer"
       className={["retro-button-pricelist", className].filter(Boolean).join(" ")}
@@ -138,10 +139,10 @@ function HeroSection({
           </p>
         ) : null}
         <div className="flex flex-wrap gap-3 pt-1">
-          <a href={ctaPrimaryUrl} className="retro-button">
+          <a href={ctaPrimaryUrl} className="retro-button" data-track="hero_cta_primary">
             {ctaPrimaryLabel}
           </a>
-          <a href={ctaSecondaryUrl} className="retro-button-alt">
+          <a href={ctaSecondaryUrl} className="retro-button-alt" data-track="hero_cta_secondary">
             {ctaSecondaryLabel}
           </a>
           {pricelist ? <PricelistButton link={pricelist} /> : null}
@@ -403,7 +404,12 @@ function EducationSection({ section }: { section: SectionWithContents }) {
             {article.excerpt ? (
               <p className="mt-2 line-clamp-2 text-sm text-black/80">{article.excerpt}</p>
             ) : null}
-            <a href={article.url} className="mt-3 inline-block text-sm font-bold underline">
+            <a
+              href={article.url}
+              className="mt-3 inline-block text-sm font-bold underline"
+              data-track="article"
+              data-track-label={article.title}
+            >
               Baca
             </a>
           </article>
@@ -481,6 +487,7 @@ function ContactSection({
             {settings.contactEmail ? (
               <a
                 href={`mailto:${settings.contactEmail}`}
+                data-track="email_contact"
                 className="w-fit underline decoration-[var(--brand-primary)] decoration-2 underline-offset-4 hover:text-[var(--brand-primary)]"
               >
                 {settings.contactEmail}
@@ -497,6 +504,7 @@ function ContactSection({
             {settings.mapsUrl ? (
               <a
                 href={settings.mapsUrl}
+                data-track="maps"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="retro-button-alt mt-1 inline-flex w-fit"

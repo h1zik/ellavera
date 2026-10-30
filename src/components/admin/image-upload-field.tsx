@@ -11,6 +11,8 @@ type Props = {
   hint?: string;
   /** Preview lebar penuh — untuk gambar landscape besar. */
   widePreview?: boolean;
+  /** Sembunyikan preview + link bawaan (pemanggil menampilkan sendiri). */
+  hidePreview?: boolean;
 };
 
 const ACCEPT = "image/jpeg,image/png,image/webp,image/gif";
@@ -22,6 +24,7 @@ export function ImageUploadField({
   compact,
   hint,
   widePreview,
+  hidePreview,
 }: Props) {
   const inputId = useId();
   const [loading, setLoading] = useState(false);
@@ -104,7 +107,7 @@ export function ImageUploadField({
           {error}
         </p>
       ) : null}
-      {currentUrl ? (
+      {currentUrl && !hidePreview ? (
         <div className="space-y-1.5">
           <div
             className={[

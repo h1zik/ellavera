@@ -10,6 +10,11 @@ import { toAdminSiteSettings } from "@/lib/admin-settings";
 import { invalidRecipients, parseRecipientList } from "@/lib/lead-email";
 import { encryptSecret } from "@/lib/secret-box";
 import {
+  TRACKING_ID_PATTERNS,
+  invalidGoogleTagIds,
+  parseGoogleTagIds,
+} from "@/lib/tracking-ids";
+import {
   DEFAULT_LEAD_FORM_FIELDS_JSON,
   leadFormFieldsJsonIssuesSummary,
 } from "@/lib/lead-form-config";
@@ -98,6 +103,39 @@ const settingsSchema = z.object({
     .transform((s) => String(s).trim())
     .refine((s) => s === "" || /^\d{6,20}$/.test(s), {
       message: "metaPixelId: kosong atau hanya angka (ID Pixel Meta, ~15-16 digit)",
+    }),
+  openaiPixelId: str
+    .transform((s) => s.trim())
+    .refine((s) => s === "" || TRACKING_ID_PATTERNS.openai.test(s), {
+      message: "openaiPixelId: kosong atau Pixel ID dari OpenAI Ads Manager (huruf/angka saja)",
+    }),
+  googleTagIds: str.superRefine((s, ctx) => {
+    const bad = invalidGoogleTagIds(s);
+    if (bad.length === 0) return;
+    ctx.addIssue({
+      code: "custom",
+      message: `Google tag ID tidak valid: ${bad.join(", ")} (format G-XXXXXXX atau AW-123456789)`,
+    });
+  }),
+  googleAdsLeadSendTo: str
+    .transform((s) => s.trim())
+    .refine((s) => s === "" || TRACKING_ID_PATTERNS.googleAdsSendTo.test(s), {
+      message: "Konversi Google Ads (Lead): format AW-123456789/AbCdEfGh",
+    }),
+  googleAdsContactSendTo: str
+    .transform((s) => s.trim())
+    .refine((s) => s === "" || TRACKING_ID_PATTERNS.googleAdsSendTo.test(s), {
+      message: "Konversi Google Ads (WhatsApp): format AW-123456789/AbCdEfGh",
+    }),
+  gtmContainerId: str
+    .transform((s) => s.trim().toUpperCase())
+    .refine((s) => s === "" || TRACKING_ID_PATTERNS.gtm.test(s), {
+      message: "gtmContainerId: format GTM-XXXXXXX",
+    }),
+  tiktokPixelId: str
+    .transform((s) => s.trim().toUpperCase())
+    .refine((s) => s === "" || TRACKING_ID_PATTERNS.tiktok.test(s), {
+      message: "tiktokPixelId: Pixel ID TikTok (huruf/angka, ~20 karakter)",
     }),
   heroImageUrl: str.refine(isValidHeroOrAssetUrl, {
     message: "heroImageUrl: kosong, URL https://…, atau path /uploads/…",
@@ -200,6 +238,12 @@ export async function PUT(request: Request) {
       seoDescription: payload.seoDescription.trim() || null,
       seoKeywords: payload.seoKeywords.trim() || null,
       metaPixelId: payload.metaPixelId.trim() || null,
+      openaiPixelId: payload.openaiPixelId || null,
+      googleTagIds: parseGoogleTagIds(payload.googleTagIds).join(", ") || null,
+      googleAdsLeadSendTo: payload.googleAdsLeadSendTo || null,
+      googleAdsContactSendTo: payload.googleAdsContactSendTo || null,
+      gtmContainerId: payload.gtmContainerId || null,
+      tiktokPixelId: payload.tiktokPixelId || null,
       heroImageUrl: payload.heroImageUrl.trim() || null,
       adminLogoUrl: payload.adminLogoUrl.trim() || null,
       faviconUrl: payload.faviconUrl.trim() || null,

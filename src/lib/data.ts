@@ -79,10 +79,16 @@ export const getHeadSettings = unstable_cache(
         seoKeywords: true,
         faviconUrl: true,
         metaPixelId: true,
+        openaiPixelId: true,
+        googleTagIds: true,
+        googleAdsLeadSendTo: true,
+        googleAdsContactSendTo: true,
+        gtmContainerId: true,
+        tiktokPixelId: true,
         siteName: true,
       },
     }),
-  ["head-settings-v1"],
+  ["head-settings-v2"],
   { tags: [LANDING_CACHE_TAG], revalidate: 300 },
 );
 

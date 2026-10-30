@@ -69,6 +69,8 @@ export function LeadForm({ fields }: Props) {
       <button
         type="submit"
         className="retro-button mt-1 disabled:opacity-60"
+        data-track="lead_submit"
+        data-track-label="Kirim brief"
         disabled={status === "loading"}
       >
         {status === "loading" ? "Mengirim…" : "Kirim brief"}

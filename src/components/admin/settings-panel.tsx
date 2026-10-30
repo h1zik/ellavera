@@ -15,6 +15,7 @@ import { TRACKING_ID_PATTERNS, invalidGoogleTagIds } from "@/lib/tracking-ids";
 import { ImageUploadField } from "./image-upload-field";
 import { LeadFormFieldsEditor } from "./lead-form-fields-editor";
 import { TalentGalleryEditor } from "./talent-gallery-editor";
+import { ButtonEventsEditor } from "./button-events-editor";
 
 export type SettingsTab = "merek" | "kontak" | "form" | "seo" | "tracking";
 
@@ -58,6 +59,7 @@ const TAB_FIELDS: Record<SettingsTab, readonly string[]> = {
     "googleAdsContactSendTo",
     "gtmContainerId",
     "tiktokPixelId",
+    "buttonEventsJson",
   ],
 };
 
@@ -834,13 +836,33 @@ export function SettingsPanel({
               </div>
             </details>
 
-            <details className="set-more">
-              <summary>Event apa saja yang dikirim?</summary>
+            <h4 className="set-subhead">Event per tombol</h4>
+            <p className="set-row-hint">
+              Setiap klik tombol selalu tercatat di Google Analytics/GTM sebagai{" "}
+              <code>button_click</code>. Pilih event di bawah kalau klik tombol itu juga mau dikirim
+              ke Meta, ChatGPT Ads, TikTok, dan Google Ads sebagai konversi.
+            </p>
+            <div className="set-rows">
+              <div className="set-row set-row--stacked py-1">
+                <ButtonEventsEditor
+                  json={settings.buttonEventsJson}
+                  onChange={(buttonEventsJson) => set("buttonEventsJson", buttonEventsJson)}
+                />
+                {err("buttonEventsJson")?.length ? (
+                  <p role="alert" className="set-row-error pb-3">
+                    {err("buttonEventsJson")!.join(" ")}
+                  </p>
+                ) : null}
+              </div>
+            </div>
+
+            <details className="set-more mt-6">
+              <summary>Nama event di tiap platform</summary>
               <div className="set-more-body overflow-x-auto">
-                <table className="w-full min-w-[34rem] text-left text-xs">
+                <table className="w-full min-w-[38rem] text-left text-xs">
                   <thead className="text-black/55">
                     <tr>
-                      <th className="py-2 pr-3 font-bold">Saat pengunjung…</th>
+                      <th className="py-2 pr-3 font-bold">Event</th>
                       <th className="py-2 pr-3 font-bold">Meta</th>
                       <th className="py-2 pr-3 font-bold">ChatGPT Ads</th>
                       <th className="py-2 pr-3 font-bold">Google</th>
@@ -848,29 +870,35 @@ export function SettingsPanel({
                     </tr>
                   </thead>
                   <tbody className="font-mono">
-                    <tr className="border-t border-black/10">
-                      <td className="py-2 pr-3 font-sans font-bold">Membuka halaman</td>
-                      <td className="py-2 pr-3">PageView</td>
-                      <td className="py-2 pr-3">page_viewed</td>
-                      <td className="py-2 pr-3">page_view</td>
-                      <td className="py-2">PageView</td>
-                    </tr>
-                    <tr className="border-t border-black/10">
-                      <td className="py-2 pr-3 font-sans font-bold">Mengirim brief</td>
-                      <td className="py-2 pr-3">Lead</td>
-                      <td className="py-2 pr-3">lead_created</td>
-                      <td className="py-2 pr-3">generate_lead</td>
-                      <td className="py-2">SubmitForm</td>
-                    </tr>
-                    <tr className="border-t border-black/10">
-                      <td className="py-2 pr-3 font-sans font-bold">Klik WhatsApp</td>
-                      <td className="py-2 pr-3">Contact</td>
-                      <td className="py-2 pr-3">contact_whatsapp</td>
-                      <td className="py-2 pr-3">contact</td>
-                      <td className="py-2">Contact</td>
-                    </tr>
+                    {(
+                      [
+                        ["Buka halaman", "PageView", "page_viewed", "page_view", "PageView"],
+                        ["Brief terkirim", "Lead", "lead_created", "generate_lead", "SubmitForm"],
+                        ["Klik tombol apa pun", "–", "–", "button_click", "–"],
+                        ["Lead", "Lead", "lead_created", "generate_lead", "SubmitForm"],
+                        ["Contact", "Contact", "contact_whatsapp / contact_…", "contact", "Contact"],
+                        ["ViewContent", "ViewContent", "contents_viewed", "select_content", "ViewContent"],
+                        ["Schedule", "Schedule", "appointment_scheduled", "schedule", "Schedule"],
+                        ["FindLocation", "FindLocation", "find_location", "find_location", "FindLocation"],
+                        ["Event custom", "nama custom", "nama custom", "nama custom", "nama custom"],
+                      ] as const
+                    ).map(([event, ...names]) => (
+                      <tr key={event} className="border-t border-black/10">
+                        <td className="py-2 pr-3 font-sans font-bold">{event}</td>
+                        {names.map((n, i) => (
+                          <td key={i} className="py-2 pr-3">
+                            {n}
+                          </td>
+                        ))}
+                      </tr>
+                    ))}
                   </tbody>
                 </table>
+                <p className="mt-2 text-xs text-black/50">
+                  Di GTM, tiap event juga dikirim sebagai Custom Event <code>ellavera_…</code>, mis.{" "}
+                  <code>ellavera_click</code>, <code>ellavera_lead</code>, <code>ellavera_contact</code>,
+                  dengan variabel <code>button_id</code> dan <code>button_label</code>.
+                </p>
               </div>
             </details>
           </>

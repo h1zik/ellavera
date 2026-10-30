@@ -10,6 +10,11 @@ import { toAdminSiteSettings } from "@/lib/admin-settings";
 import { invalidRecipients, parseRecipientList } from "@/lib/lead-email";
 import { encryptSecret } from "@/lib/secret-box";
 import {
+  buttonEventsIssues,
+  parseButtonEvents,
+  serializeButtonEvents,
+} from "@/lib/button-events";
+import {
   TRACKING_ID_PATTERNS,
   invalidGoogleTagIds,
   parseGoogleTagIds,
@@ -132,6 +137,11 @@ const settingsSchema = z.object({
     .refine((s) => s === "" || TRACKING_ID_PATTERNS.gtm.test(s), {
       message: "gtmContainerId: format GTM-XXXXXXX",
     }),
+  buttonEventsJson: str.superRefine((s, ctx) => {
+    for (const message of buttonEventsIssues(s)) {
+      ctx.addIssue({ code: "custom", message });
+    }
+  }),
   tiktokPixelId: str
     .transform((s) => s.trim().toUpperCase())
     .refine((s) => s === "" || TRACKING_ID_PATTERNS.tiktok.test(s), {
@@ -244,6 +254,7 @@ export async function PUT(request: Request) {
       googleAdsContactSendTo: payload.googleAdsContactSendTo || null,
       gtmContainerId: payload.gtmContainerId || null,
       tiktokPixelId: payload.tiktokPixelId || null,
+      buttonEventsJson: serializeButtonEvents(parseButtonEvents(payload.buttonEventsJson)),
       heroImageUrl: payload.heroImageUrl.trim() || null,
       adminLogoUrl: payload.adminLogoUrl.trim() || null,
       faviconUrl: payload.faviconUrl.trim() || null,

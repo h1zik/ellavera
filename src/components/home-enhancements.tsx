@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { trackContact } from "@/lib/tracking";
 
 type Props = {
   /** Slug section untuk scroll-spy — link nav header dengan `data-spy` yang cocok ditandai aktif. */
@@ -94,7 +93,8 @@ export function HomeEnhancements({ sectionSlugs, whatsappHref }: Props) {
           target="_blank"
           rel="noopener noreferrer"
           className="home-wa-float"
-          onClick={trackContact}
+          data-track="whatsapp_float"
+          data-track-label="WhatsApp melayang"
           aria-label="Chat WhatsApp Ellavera"
         >
           <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden fill="currentColor">

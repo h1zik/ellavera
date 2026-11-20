@@ -1,12 +1,14 @@
 import { Onest } from "next/font/google";
 import "./iklan.css";
-import { TrackingScripts } from "@/components/tracking-scripts";
-import { getHeadSettings } from "@/lib/data";
+import { GoogleTag } from "@/components/google-tag";
 
 /**
  * Root layout halaman iklan Google (/maklon-parfum, /parfum-white-label,
  * /skincare-white-label, /maklon-skincare). Sengaja terpisah dari layout situs:
  * desainnya beda dan tidak memuat globals.css. Halaman ini tidak masuk menu.
+ *
+ * Hanya Google tag yang dimuat di sini (tanpa pixel lain, tanpa tag dari admin) —
+ * permintaan tim iklan: satu halaman, satu Google tag.
  */
 
 const onest = Onest({
@@ -16,23 +18,17 @@ const onest = Onest({
   display: "swap",
 });
 
-export default async function IklanLayout({
+export default function IklanLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  /**
-   * Google tag / GTM diambil dari Admin → Tracking iklan (cache ditag "landing").
-   * Kalau DB sedang bermasalah, halaman iklan tetap tampil tanpa tag.
-   */
-  const settings = await getHeadSettings().catch(() => null);
-
   return (
     <html lang="id">
-      <body className={onest.variable}>
-        <TrackingScripts settings={settings} platforms="google" />
-        {children}
-      </body>
+      <head>
+        <GoogleTag />
+      </head>
+      <body className={onest.variable}>{children}</body>
     </html>
   );
 }

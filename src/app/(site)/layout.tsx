@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import localFont from "next/font/local";
 import "../globals.css";
 import { ClickTracker } from "@/components/click-tracker";
+import { GoogleTag } from "@/components/google-tag";
 import { TrackingScripts } from "@/components/tracking-scripts";
 import { getHeadSettings } from "@/lib/data";
 
@@ -75,6 +76,9 @@ export default async function RootLayout({
 
   return (
     <html lang="id">
+      <head>
+        <GoogleTag />
+      </head>
       <body
         className={`${geistSans.variable} overflow-x-hidden antialiased`}
       >

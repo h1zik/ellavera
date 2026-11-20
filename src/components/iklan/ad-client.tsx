@@ -3,27 +3,57 @@
 import { useState, type FormEvent, type ReactNode } from "react";
 import {
   IKLAN_EVENT,
+  IKLAN_KONVERSI,
   waHref,
   waHrefWithText,
   type KodeHalaman,
   type PosisiTombol,
 } from "@/lib/iklan";
 
+/** Batas tunggu konfirmasi konversi sebelum formulir tetap membuka WhatsApp. */
+const TUNGGU_KONVERSI_MS = 1000;
+
 /**
- * Event konversi halaman iklan Google: dikirim ke `dataLayer` (untuk GTM) dan ke
- * `gtag()` bila Google tag terpasang. Nama event & parameter mengikuti catatan tim iklan.
+ * Klik tombol WhatsApp: event `lead_whatsapp` + konversi Google Ads "Klik WhatsApp".
+ * `transport_type: "beacon"` supaya tetap terkirim walau halaman langsung pindah ke WhatsApp.
+ * Nama event, parameter, dan kode konversi mengikuti file tim iklan.
  */
-function catat(kode: KodeHalaman, posisi: PosisiTombol): void {
+function catat(kode: KodeHalaman, posisi: Exclude<PosisiTombol, "formulir">): void {
   try {
-    const w = window;
-    w.dataLayer = w.dataLayer || [];
-    w.dataLayer.push({ event: IKLAN_EVENT, kode_halaman: kode, posisi_tombol: posisi });
-    if (typeof w.gtag === "function") {
-      w.gtag("event", IKLAN_EVENT, { kode_halaman: kode, posisi_tombol: posisi });
-    }
+    if (typeof window.gtag !== "function") return;
+    window.gtag("event", IKLAN_EVENT, {
+      kode_halaman: kode,
+      posisi_tombol: posisi,
+      transport_type: "beacon",
+    });
+    window.gtag("event", "conversion", { send_to: IKLAN_KONVERSI, transport_type: "beacon" });
   } catch {
     /* tracking tidak boleh memutus klik */
   }
+}
+
+/**
+ * Kiriman formulir: konversi dikirim dulu, WhatsApp dibuka lewat `event_callback`
+ * (atau setelah TUNGGU_KONVERSI_MS kalau Google tag lambat/diblokir). `buka` dipanggil tepat sekali.
+ */
+function catatFormulirLaluBuka(kode: KodeHalaman, tujuan: string): void {
+  let pergi = false;
+  const buka = () => {
+    if (pergi) return;
+    pergi = true;
+    window.location.href = tujuan;
+  };
+  if (typeof window.gtag !== "function") {
+    buka();
+    return;
+  }
+  try {
+    window.gtag("event", IKLAN_EVENT, { kode_halaman: kode, posisi_tombol: "formulir" });
+    window.gtag("event", "conversion", { send_to: IKLAN_KONVERSI, event_callback: buka });
+  } catch {
+    /* tetap buka WhatsApp di bawah */
+  }
+  window.setTimeout(buka, TUNGGU_KONVERSI_MS);
 }
 
 type WaLinkProps = {
@@ -78,8 +108,7 @@ export function AdLeadForm({ kode, layanan, jumlahOptions, children }: AdLeadFor
     const msg =
       `Halo Ellavera, saya mau tanya ${layanan}.\n` +
       `Nama: ${nama}\nKota: ${kota}\nBrand: ${brand}\nRencana jumlah: ${jumlah}\n(kode: ${kode})`;
-    catat(kode, "formulir");
-    window.location.href = waHrefWithText(msg);
+    catatFormulirLaluBuka(kode, waHrefWithText(msg));
   }
 
   return (

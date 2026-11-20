@@ -17,6 +17,13 @@ export type PosisiTombol = "header" | "hero" | "form-samping" | "footer" | "bar-
 
 export const IKLAN_EVENT = "lead_whatsapp";
 
+/**
+ * Kode konversi Google Ads "Klik WhatsApp" — dikirim di setiap klik tombol WhatsApp
+ * dan kiriman formulir. Jangan tempel event snippet-nya di <head>: setiap kunjungan
+ * halaman akan terhitung sebagai konversi.
+ */
+export const IKLAN_KONVERSI = "AW-18566378554/yVSKCM269LsdELrokZVF";
+
 const SITE_URL = "https://ellavera.id";
 const STORAGE = "https://api.ellavera.id/storage/v1/object/public/media/site";
 

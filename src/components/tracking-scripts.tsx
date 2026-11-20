@@ -41,23 +41,15 @@ function validButtonEvents(raw: string | null | undefined): ButtonEventsMap {
  * Platform yang ID-nya kosong/tidak valid tidak dirender sama sekali.
  * Event konversi (Lead / Contact) dikirim lewat `@/lib/tracking`.
  */
-export function TrackingScripts({
-  settings,
-  platforms = "all",
-}: {
-  settings?: TrackingSettings | null;
-  /** "google" = hanya Google tag/Ads + GTM (halaman iklan Google); pixel lain & event per tombol dilewati. */
-  platforms?: "all" | "google";
-}) {
-  const all = platforms === "all";
-  const metaId = all ? validTrackingId(settings?.metaPixelId, P.meta) : null;
-  const openaiId = all ? validTrackingId(settings?.openaiPixelId, P.openai) : null;
+export function TrackingScripts({ settings }: { settings?: TrackingSettings | null }) {
+  const metaId = validTrackingId(settings?.metaPixelId, P.meta);
+  const openaiId = validTrackingId(settings?.openaiPixelId, P.openai);
   const gtmId = validTrackingId(settings?.gtmContainerId?.toUpperCase(), P.gtm);
-  const tiktokId = all ? validTrackingId(settings?.tiktokPixelId?.toUpperCase(), P.tiktok) : null;
+  const tiktokId = validTrackingId(settings?.tiktokPixelId?.toUpperCase(), P.tiktok);
   const adsLead = validTrackingId(settings?.googleAdsLeadSendTo, P.googleAdsSendTo);
   const adsContact = validTrackingId(settings?.googleAdsContactSendTo, P.googleAdsSendTo);
 
-  const buttonEvents = all ? validButtonEvents(settings?.buttonEventsJson) : {};
+  const buttonEvents = validButtonEvents(settings?.buttonEventsJson);
   const buttonSendTo = Object.values(buttonEvents)
     .map((c) => c.googleAdsSendTo)
     .filter((s): s is string => Boolean(s));

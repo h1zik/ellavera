@@ -1,5 +1,14 @@
 import Link from "next/link";
-import { AdPage, TermasukHarga, Ticks } from "@/components/iklan/ad-page";
+import {
+  AdBlock,
+  AdCols,
+  AdPage,
+  AdSection,
+  PriceTable,
+  Proof,
+  TermasukHarga,
+  Ticks,
+} from "@/components/iklan/ad-page";
 import { IKLAN_FOTO, IKLAN_PRICELIST_URL, adMetadata } from "@/lib/iklan";
 
 export const metadata = adMetadata({
@@ -64,30 +73,23 @@ export default function SkincareWhiteLabelPage() {
       ]}
       jumlahOptions={["200 sampai 300 pcs", "300 sampai 1.000 pcs", "Lebih dari 1.000 pcs", "Belum tahu"]}
     >
-      <section>
-        <div className="wrap two">
-          <div>
-            <h2>Contoh harga untuk 200 pcs</h2>
-            <table className="prices">
-              <tbody>
-                {CONTOH_HARGA.map(([produk, harga]) => (
-                  <tr key={produk}>
-                    <td>{produk}</td>
-                    <td>{harga}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-            <p className="note">
-              Per pcs, belum termasuk PPN. Daftar lengkap 81 produk ada di{" "}
-              <a href={IKLAN_PRICELIST_URL} target="_blank" rel="noopener">
-                pricelist
-              </a>
-              .
-            </p>
-          </div>
-          <div>
-            <h2>Aturan minimal order</h2>
+      <AdSection>
+        <AdCols>
+          <AdBlock title="Contoh harga untuk 200 pcs">
+            <PriceTable
+              rows={CONTOH_HARGA}
+              note={
+                <>
+                  Per pcs, belum termasuk PPN. Daftar lengkap 81 produk ada di{" "}
+                  <a href={IKLAN_PRICELIST_URL} target="_blank" rel="noopener">
+                    pricelist
+                  </a>
+                  .
+                </>
+              }
+            />
+          </AdBlock>
+          <AdBlock title="Aturan minimal order">
             <Ticks
               items={[
                 "Produk nomor 1 sampai 30: minimal 200 pcs per produk",
@@ -97,15 +99,14 @@ export default function SkincareWhiteLabelPage() {
                 "Sampel Rp50.000 per produk",
               ]}
             />
-            <div className="proof">{HALAL}</div>
-          </div>
-        </div>
-      </section>
+            <Proof>{HALAL}</Proof>
+          </AdBlock>
+        </AdCols>
+      </AdSection>
       <TermasukHarga />
-      <section>
-        <div className="wrap two fit">
-          <div>
-            <h2>Cocok untuk siapa</h2>
+      <AdSection>
+        <AdCols>
+          <AdBlock title="Cocok untuk siapa">
             <Ticks
               items={[
                 "Pemula yang mau punya brand skincare dengan modal terbatas",
@@ -113,9 +114,8 @@ export default function SkincareWhiteLabelPage() {
                 "Klinik, salon, MUA, atau influencer yang mau produk atas nama sendiri",
               ]}
             />
-          </div>
-          <div>
-            <h2>Kurang cocok kalau Anda</h2>
+          </AdBlock>
+          <AdBlock title="Kurang cocok kalau Anda">
             <Ticks
               no
               items={[
@@ -123,9 +123,9 @@ export default function SkincareWhiteLabelPage() {
                 "Mencari produk jadi untuk dijual tanpa merek sendiri",
               ]}
             />
-          </div>
-        </div>
-      </section>
+          </AdBlock>
+        </AdCols>
+      </AdSection>
     </AdPage>
   );
 }

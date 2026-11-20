@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { AdPage, Ticks } from "@/components/iklan/ad-page";
+import { AdBlock, AdCols, AdPage, AdSection, AdSubTitle, Proof, Ticks } from "@/components/iklan/ad-page";
 import { IKLAN_FOTO, adMetadata } from "@/lib/iklan";
 
 export const metadata = adMetadata({
@@ -57,10 +57,9 @@ export default function MaklonParfumPage() {
       ]}
       jumlahOptions={["1.000 pcs", "1.000 sampai 3.000 pcs", "Lebih dari 3.000 pcs", "Belum tahu"]}
     >
-      <section>
-        <div className="wrap two">
-          <div>
-            <h2>Yang kami kerjakan untuk Anda</h2>
+      <AdSection>
+        <AdCols>
+          <AdBlock title="Yang kami kerjakan untuk Anda">
             <Ticks
               items={[
                 "Meracik aroma dari cerita atau parfum acuan yang Anda bawa",
@@ -69,13 +68,12 @@ export default function MaklonParfumPage() {
                 "Produksi dan pengecekan mutu di pabrik kami sendiri",
               ]}
             />
-            <div className="proof">
+            <Proof>
               Contoh hasil pabrik kami: parfum <em>Secret of Buton</em> dari Archipelago Scent, brand parfum
               milik kami sendiri.
-            </div>
-          </div>
-          <div className="fit">
-            <h2>Cocok untuk siapa</h2>
+            </Proof>
+          </AdBlock>
+          <AdBlock title="Cocok untuk siapa">
             <Ticks
               items={[
                 "Pebisnis parfum yang mau aroma khas yang tidak dimiliki brand lain",
@@ -83,7 +81,7 @@ export default function MaklonParfumPage() {
                 "Klinik, salon, MUA, atau influencer yang mau parfum atas nama sendiri",
               ]}
             />
-            <h3 style={{ marginTop: 36 }}>Kurang cocok kalau Anda</h3>
+            <AdSubTitle>Kurang cocok kalau Anda</AdSubTitle>
             <Ticks
               no
               items={[
@@ -95,9 +93,9 @@ export default function MaklonParfumPage() {
                 </>,
               ]}
             />
-          </div>
-        </div>
-      </section>
+          </AdBlock>
+        </AdCols>
+      </AdSection>
     </AdPage>
   );
 }

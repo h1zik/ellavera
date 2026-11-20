@@ -93,6 +93,25 @@ export const getHeadSettings = unstable_cache(
   { tags: [LANDING_CACHE_TAG], revalidate: 300 },
 );
 
+/**
+ * Warna brand + logo untuk halaman iklan Google, supaya tampilannya ikut pengaturan admin
+ * seperti halaman utama. Ditag LANDING_CACHE_TAG: langsung ter-invalidate saat pengaturan disimpan.
+ */
+export const getBrandLook = unstable_cache(
+  async () =>
+    prisma.siteSettings.findUnique({
+      where: { id: "default" },
+      select: {
+        primaryColor: true,
+        secondaryColor: true,
+        accentColor: true,
+        siteLogoUrl: true,
+      },
+    }),
+  ["brand-look-v1"],
+  { tags: [LANDING_CACHE_TAG], revalidate: 300 },
+);
+
 /** Panggil `ensureSeedData()` dulu (mis. dari `getAdminPageData`). */
 export async function getAllSectionsForAdmin() {
   return prisma.section.findMany({

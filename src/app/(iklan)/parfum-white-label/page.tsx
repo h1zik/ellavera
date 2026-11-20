@@ -1,5 +1,14 @@
 import Link from "next/link";
-import { AdPage, TermasukHarga, Ticks } from "@/components/iklan/ad-page";
+import {
+  AdBlock,
+  AdCols,
+  AdPage,
+  AdSection,
+  AdSubTitle,
+  Proof,
+  TermasukHarga,
+  Ticks,
+} from "@/components/iklan/ad-page";
 import { IKLAN_FOTO, IKLAN_PRICELIST_URL, adMetadata } from "@/lib/iklan";
 
 export const metadata = adMetadata({
@@ -68,10 +77,9 @@ export default function ParfumWhiteLabelPage() {
       ]}
       jumlahOptions={["200 botol", "200 sampai 500 botol", "500 sampai 1.000 botol", "Lebih dari 1.000 botol"]}
     >
-      <section>
-        <div className="wrap two">
-          <div>
-            <h2>Pilihan yang tersedia</h2>
+      <AdSection>
+        <AdCols>
+          <AdBlock title="Pilihan yang tersedia">
             <Ticks
               items={[
                 "24 aroma: 8 pria, 8 wanita, 8 uniseks",
@@ -83,13 +91,12 @@ export default function ParfumWhiteLabelPage() {
                 "Sampel Rp50.000 per aroma",
               ]}
             />
-            <div className="proof">
+            <Proof>
               Contoh hasil pabrik kami: parfum <em>Secret of Buton</em> dari Archipelago Scent, brand parfum
               milik kami sendiri.
-            </div>
-          </div>
-          <div className="fit">
-            <h2>Cocok untuk siapa</h2>
+            </Proof>
+          </AdBlock>
+          <AdBlock title="Cocok untuk siapa">
             <Ticks
               items={[
                 "Pemula yang mau punya brand parfum dengan modal terbatas",
@@ -97,7 +104,7 @@ export default function ParfumWhiteLabelPage() {
                 "Klinik, salon, MUA, atau influencer yang mau parfum atas nama sendiri",
               ]}
             />
-            <h3 style={{ marginTop: 36 }}>Kurang cocok kalau Anda</h3>
+            <AdSubTitle>Kurang cocok kalau Anda</AdSubTitle>
             <Ticks
               no
               items={[
@@ -106,9 +113,9 @@ export default function ParfumWhiteLabelPage() {
                 "Mencari produk jadi untuk dijual tanpa merek sendiri",
               ]}
             />
-          </div>
-        </div>
-      </section>
+          </AdBlock>
+        </AdCols>
+      </AdSection>
       <TermasukHarga />
     </AdPage>
   );

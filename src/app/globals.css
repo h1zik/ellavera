@@ -975,3 +975,171 @@ body {
     }
   }
 }
+
+/* ═══ Halaman iklan Google (/maklon-parfum, /parfum-white-label, /skincare-white-label, /maklon-skincare) ═══
+   Memakai panel, tombol, dan warna yang sama dengan halaman utama; kelas di bawah hanya
+   untuk bagian yang tidak ada di halaman utama (tombol WhatsApp, slip harga, daftar centang). */
+@layer components {
+  /* Nada panel berselang-seling, sama seperti .section-tone-alt di halaman utama */
+  .ad-stack > .retro-card:nth-child(even) {
+    background: linear-gradient(
+      195deg,
+      color-mix(in srgb, var(--brand-primary) 22%, white) 0%,
+      var(--brand-secondary) 45%,
+      #fffef9 100%
+    );
+    box-shadow: var(--retro-shadow-shift) var(--retro-shadow-shift) 0 0 var(--brand-accent);
+  }
+
+  /* Hijau = membuka WhatsApp, di semua tempat (sama dengan tombol melayang di halaman utama) */
+  .ad-wa-button {
+    @apply retro-focus inline-flex items-center justify-center gap-2.5 rounded-xl border-2 border-[var(--retro-black)] bg-[#25D366] px-6 py-3.5 text-center text-sm font-black uppercase tracking-wide text-[var(--retro-black)] transition-transform duration-200;
+    box-shadow: 5px 5px 0 0 var(--retro-black);
+  }
+
+  .ad-wa-button:hover {
+    transform: translate(-3px, -3px);
+    box-shadow: 8px 8px 0 0 var(--retro-black);
+    filter: brightness(1.05);
+  }
+
+  .ad-wa-button:active {
+    transform: translate(1px, 1px);
+    box-shadow: 3px 3px 0 0 var(--retro-black);
+  }
+
+  .ad-wa-button svg {
+    @apply h-5 w-5 shrink-0;
+  }
+
+  .ad-wa-pill {
+    @apply retro-focus relative z-10 inline-flex h-11 shrink-0 items-center gap-2 rounded-full border-[3px] border-[var(--retro-black)] bg-[#25D366] px-4 text-sm font-black text-[var(--retro-black)] transition-transform duration-200;
+    box-shadow: 4px 4px 0 0 var(--retro-black);
+  }
+
+  .ad-wa-pill:hover {
+    transform: translate(-2px, -2px);
+    box-shadow: 6px 6px 0 0 var(--retro-black);
+  }
+
+  .ad-wa-pill svg {
+    @apply h-4 w-4 shrink-0;
+  }
+
+  /* Tautan di dalam teks (pricelist, Maps, halaman iklan lain) */
+  .ad-shell a:not([class]) {
+    @apply font-bold underline decoration-2 underline-offset-4;
+    text-decoration-color: var(--brand-primary);
+  }
+
+  .ad-shell a:not([class]):hover {
+    text-decoration-color: var(--brand-accent);
+  }
+
+  /* Judul blok di dalam panel dua kolom — versi lebih kecil dari .section-title */
+  .ad-title {
+    @apply text-2xl font-black leading-[1.12] tracking-tight text-[var(--retro-black)] md:text-[1.75rem];
+    text-shadow:
+      2px 2px 0 color-mix(in srgb, var(--brand-accent) 88%, transparent),
+      4px 4px 0 color-mix(in srgb, var(--brand-primary) 55%, transparent);
+  }
+
+  .ad-pill {
+    @apply inline-flex items-center rounded-full border-2 border-[var(--retro-black)] bg-white px-3 py-1 text-[11px] font-black uppercase tracking-[0.12em] text-[var(--retro-black)];
+    box-shadow: 2px 2px 0 0 var(--brand-primary);
+  }
+
+  /* Daftar centang / strip */
+  .ad-ticks > li {
+    @apply flex gap-3 border-b border-dashed border-black/20 py-3 text-[15px] font-semibold leading-relaxed text-black/90 md:text-base;
+  }
+
+  .ad-ticks > li:last-child {
+    @apply border-b-0;
+  }
+
+  .ad-tick {
+    @apply mt-0.5 inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-lg border-2 border-[var(--retro-black)];
+    background: var(--brand-primary);
+    box-shadow: 2px 2px 0 0 var(--retro-black);
+  }
+
+  .ad-tick--no {
+    background: #fff;
+  }
+
+  .ad-tick svg {
+    @apply h-3 w-3;
+  }
+
+  /* Slip harga — tiket di atas foto hero */
+  .ad-slip {
+    @apply relative overflow-hidden rounded-2xl border-[3px] border-[var(--retro-black)] bg-[#fffef9];
+    box-shadow: 6px 6px 0 0 var(--retro-black);
+  }
+
+  .ad-slip-head {
+    @apply border-b-[3px] border-[var(--retro-black)] px-4 py-2.5 text-[11px] font-black uppercase leading-snug tracking-[0.16em] text-[var(--retro-black)];
+    background: var(--brand-primary);
+  }
+
+  .ad-slip-row {
+    @apply flex items-baseline justify-between gap-4 py-1.5 text-sm;
+  }
+
+  .ad-slip-row dt {
+    @apply shrink-0 font-semibold text-black/60;
+  }
+
+  .ad-slip-row dd {
+    @apply text-right font-bold text-[var(--retro-black)];
+  }
+
+  .ad-slip-total {
+    @apply mt-2 items-center border-t-2 border-dashed border-[var(--retro-black)] pt-3;
+  }
+
+  .ad-slip-total dt {
+    @apply min-w-0 shrink font-black leading-snug text-[var(--retro-black)];
+  }
+
+  .ad-slip-total dd {
+    @apply whitespace-nowrap text-[1.375rem] font-black leading-none tracking-tight;
+  }
+
+  .ad-slip-total--text dd {
+    @apply whitespace-normal text-[15px] leading-snug;
+  }
+
+  /* Pilihan radio di formulir */
+  .ad-choice {
+    @apply inline-flex cursor-pointer items-center gap-2 rounded-full border-2 border-black/15 bg-white px-4 py-2 text-sm font-bold text-black/80 shadow-[3px_3px_0_0_rgba(13,13,13,0.08)] transition-colors;
+  }
+
+  .ad-choice:has(input:checked) {
+    @apply border-[var(--retro-black)] text-[var(--retro-black)];
+    background: color-mix(in srgb, var(--brand-primary) 30%, white);
+    box-shadow: 3px 3px 0 0 var(--brand-primary);
+  }
+
+  .ad-choice:has(input:focus-visible) {
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--brand-primary) 55%, transparent);
+  }
+
+  .ad-choice input {
+    accent-color: var(--retro-black);
+  }
+
+  /* Bar WhatsApp di bawah layar HP — senada dengan .home-sticky-bar */
+  .ad-bar {
+    @apply fixed inset-x-0 bottom-0 z-40 border-t-[3px] border-[var(--retro-black)] px-4 py-3 lg:hidden;
+    background: color-mix(in srgb, var(--brand-secondary) 92%, white);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .ad-wa-button:hover,
+    .ad-wa-pill:hover {
+      transform: none;
+    }
+  }
+}

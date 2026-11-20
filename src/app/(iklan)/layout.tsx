@@ -1,20 +1,19 @@
-import { Onest } from "next/font/google";
-import "./iklan.css";
+import localFont from "next/font/local";
+import "../globals.css";
 import { GoogleTag } from "@/components/google-tag";
 
 /**
  * Root layout halaman iklan Google (/maklon-parfum, /parfum-white-label,
- * /skincare-white-label, /maklon-skincare). Sengaja terpisah dari layout situs:
- * desainnya beda dan tidak memuat globals.css. Halaman ini tidak masuk menu.
- *
- * Hanya Google tag yang dimuat di sini (tanpa pixel lain, tanpa tag dari admin) —
- * permintaan tim iklan: satu halaman, satu Google tag.
+ * /skincare-white-label, /maklon-skincare). Tampilannya memakai globals.css & font
+ * yang sama dengan halaman utama, tapi layout-nya sengaja terpisah: di sini hanya
+ * Google tag yang dimuat (tanpa pixel lain, tanpa tag dari admin) — permintaan tim
+ * iklan: satu halaman, satu Google tag. Halaman ini tidak masuk menu.
  */
 
-const onest = Onest({
-  subsets: ["latin"],
-  weight: ["400", "600", "700", "800"],
-  variable: "--font-onest",
+const geistSans = localFont({
+  src: "../fonts/GeistVF.woff",
+  variable: "--font-geist-sans",
+  weight: "100 900",
   display: "swap",
 });
 
@@ -28,7 +27,7 @@ export default function IklanLayout({
       <head>
         <GoogleTag />
       </head>
-      <body className={onest.variable}>{children}</body>
+      <body className={`${geistSans.variable} overflow-x-hidden antialiased`}>{children}</body>
     </html>
   );
 }

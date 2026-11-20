@@ -112,41 +112,47 @@ export function AdLeadForm({ kode, layanan, jumlahOptions, children }: AdLeadFor
   }
 
   return (
-    <form id="leadForm" noValidate onSubmit={onSubmit}>
-      <label>
-        Nama
-        <input name="nama" autoComplete="name" required />
+    <form id="leadForm" noValidate onSubmit={onSubmit} className="grid gap-4">
+      <label className="block">
+        <span className="retro-field-label">Nama</span>
+        <input name="nama" autoComplete="name" required className="retro-input" />
       </label>
-      <label>
-        Kota
-        <input name="kota" autoComplete="address-level2" required />
+      <label className="block">
+        <span className="retro-field-label">Kota</span>
+        <input name="kota" autoComplete="address-level2" required className="retro-input" />
       </label>
       <fieldset>
-        <legend>Sudah punya brand?</legend>
-        <div className="choice">
-          <label>
+        <legend className="retro-field-label">Sudah punya brand?</legend>
+        <div className="flex flex-wrap gap-2.5">
+          <label className="ad-choice">
             <input type="radio" name="brand" value="Sudah jalan" required />
             Sudah jalan
           </label>
-          <label>
+          <label className="ad-choice">
             <input type="radio" name="brand" value="Baru mau mulai" />
             Baru mau mulai
           </label>
         </div>
       </fieldset>
-      <label>
-        Rencana jumlah order
-        <select name="jumlah" required defaultValue="">
+      <label className="block">
+        <span className="retro-field-label">Rencana jumlah order</span>
+        <select name="jumlah" required defaultValue="" className="retro-input">
           <option value="">Pilih</option>
           {jumlahOptions.map((o) => (
             <option key={o}>{o}</option>
           ))}
         </select>
       </label>
-      <p className="err" id="err" role="alert">
+      <p
+        id="err"
+        role="alert"
+        className={
+          error ? "rounded-xl border-2 border-red-700/40 bg-red-50 px-3 py-2 text-sm font-semibold text-red-800" : "hidden"
+        }
+      >
         {error}
       </p>
-      <button className="btn" type="submit">
+      <button className="ad-wa-button mt-1 w-full" type="submit">
         {children}
       </button>
     </form>

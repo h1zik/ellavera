@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { AdPage, Ticks } from "@/components/iklan/ad-page";
+import { AdBlock, AdCols, AdPage, AdSection, AdSubTitle, Ticks } from "@/components/iklan/ad-page";
 import { IKLAN_FOTO, adMetadata } from "@/lib/iklan";
 
 export const metadata = adMetadata({
@@ -59,10 +59,9 @@ export default function MaklonSkincarePage() {
       ]}
       jumlahOptions={["1.000 pcs", "1.000 sampai 3.000 pcs", "Lebih dari 3.000 pcs", "Belum tahu"]}
     >
-      <section>
-        <div className="wrap two">
-          <div>
-            <h2>Yang kami kerjakan untuk Anda</h2>
+      <AdSection>
+        <AdCols>
+          <AdBlock title="Yang kami kerjakan untuk Anda">
             <Ticks
               items={[
                 "Membuat formula dan sampel dari brief Anda",
@@ -72,9 +71,8 @@ export default function MaklonSkincarePage() {
                 HALAL,
               ]}
             />
-          </div>
-          <div className="fit">
-            <h2>Cocok untuk siapa</h2>
+          </AdBlock>
+          <AdBlock title="Cocok untuk siapa">
             <Ticks
               items={[
                 "Pemilik brand yang sudah jalan dan mau ganti atau tambah pabrik",
@@ -82,7 +80,7 @@ export default function MaklonSkincarePage() {
                 "Klinik, salon, MUA, atau influencer yang mau produk atas nama sendiri",
               ]}
             />
-            <h3 style={{ marginTop: 36 }}>Kurang cocok kalau Anda</h3>
+            <AdSubTitle>Kurang cocok kalau Anda</AdSubTitle>
             <Ticks
               no
               items={[
@@ -93,9 +91,9 @@ export default function MaklonSkincarePage() {
                 </>,
               ]}
             />
-          </div>
-        </div>
-      </section>
+          </AdBlock>
+        </AdCols>
+      </AdSection>
     </AdPage>
   );
 }

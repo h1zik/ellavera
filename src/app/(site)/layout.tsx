@@ -1,12 +1,12 @@
 import type { Metadata } from "next";
 import localFont from "next/font/local";
-import "./globals.css";
+import "../globals.css";
 import { ClickTracker } from "@/components/click-tracker";
 import { TrackingScripts } from "@/components/tracking-scripts";
 import { getHeadSettings } from "@/lib/data";
 
 const geistSans = localFont({
-  src: "./fonts/GeistVF.woff",
+  src: "../fonts/GeistVF.woff",
   variable: "--font-geist-sans",
   weight: "100 900",
   display: "swap",

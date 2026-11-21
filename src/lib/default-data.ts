@@ -62,7 +62,7 @@ export const defaultSections: SectionSeed[] = [
     name: "Hero",
     type: SectionType.HERO,
     order: 1,
-    title: "Your glow-up factory starts here.",
+    title: "Produk White Label Mulai 200 pcs",
     subtitle: "Ellavera Beauty · Gen-Z friendly",
     description: "Maklon kosmetik dengan vibe retro & proses yang jelas. Unisex. Buat brand owner yang mau gerak cepat.",
     contents: [
@@ -212,8 +212,8 @@ export const defaultSections: SectionSeed[] = [
       {
         key: "faq",
         value: JSON.stringify({
-          q: "MOQ-nya flexibel nggak?",
-          a: "Tergantung jenis produk — kita bisa mulai dari batch kecil buat validasi pasar.",
+          q: "MOQ-nya berapa?",
+          a: "MOQ produk custom mulai 1000 pcs, Whitelabel mulai 200 pcs. Terasa berat buat brand baru? Chat admin — kita cari solusinya bareng",
         }),
         valueType: ContentValueType.JSON,
         sortOrder: 1,
